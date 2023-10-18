@@ -1,9 +1,9 @@
 /**
  * User resource router of the REST API.
- * @module userRoutes
+ * @module clientRoutes
  */
 const { Router } = require('express');
-const { getAllUsers } = require('../../controllers/userController');
+const { getAllProviders } = require('../../controllers/providerController');
 
 /**
  * The User resource router.
@@ -54,6 +54,6 @@ const router = Router();
  *                       items:
  *                         $ref: '#/components/schemas/User'
  */
-router.route('/').get(getAllUsers);
+router.route('/').get(getAllProviders);
 
 module.exports = router;
