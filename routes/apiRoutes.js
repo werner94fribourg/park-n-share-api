@@ -4,7 +4,7 @@
  */
 const { Router } = require('express');
 
-const clientRouter = require('./api/clientRoutes');
+const clientRouter = require('./api/userRoutes');
 const providerRouter = require('./api/providerRoutes');
 const adminRouter = require('./api/adminRoutes');
 

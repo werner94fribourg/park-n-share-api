@@ -3,7 +3,7 @@
  * @module clientRoutes
  */
 const { Router } = require('express');
-const { getAllProviders } = require('../../controllers/providerController');
+const { getAllClients } = require('../../controllers/userController');
 
 /**
  * The User resource router.
@@ -54,6 +54,6 @@ const router = Router();
  *                       items:
  *                         $ref: '#/components/schemas/User'
  */
-router.route('/').get(getAllProviders);
+router.route('/').get(getAllClients);
 
 module.exports = router;
