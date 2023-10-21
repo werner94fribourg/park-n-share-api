@@ -1,22 +1,12 @@
 /**
- * User resource router of the REST API.
- * @module clientRoutes
+ * Thingy resource router of the REST API.
+ * @module thingyRoutes
  */
 const { Router } = require('express');
-// const { getAllClients } = require('../../controllers/userController');
-
-const {
-  getAllUsers,
-  createUser,
-  updateUser,
-  queryUser,
-  getUser,
-  deleteUser,
-  createOne,
-} = require('../../controllers/userController');
+const { getThingDescription } = require('../../controllers/thingyController');
 
 /**
- * The User resource router.
+ * The Thingy resource router.
  * @typedef {Router}
  */
 const router = Router();
@@ -44,7 +34,7 @@ const router = Router();
  *   get:
  *     tags:
  *       - User
- *     summary: Route used to get all the users (students and teachers) in the application
+ *     summary: Route used to get the Thingy's ThingDescription
  *     responses:
  *       200:
  *         description: List of all users
@@ -64,13 +54,6 @@ const router = Router();
  *                       items:
  *                         $ref: '#/components/schemas/User'
  */
-router.route
-  .get('/users', getAllUsers)
-  .get('/users/:id', getUser)
-  .get('/users/query', queryUser)
-  .post('/users/add', createUser)
-  .post(createOne)
-  .patch('/users/:id/update', updateUser)
-  .del('/users/:id', deleteUser);
+router.route('/').get(getThingDescription);
 
 module.exports = router;
