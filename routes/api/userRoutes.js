@@ -3,7 +3,17 @@
  * @module clientRoutes
  */
 const { Router } = require('express');
-const { getAllClients } = require('../../controllers/userController');
+// const { getAllClients } = require('../../controllers/userController');
+
+const {
+    getAllUsers,
+    createUser,
+    updateUser,
+    queryUser,
+    getUser,
+    deleteUser,
+    createOne,
+} = require('../../controllers/userController');
 
 /**
  * The User resource router.
@@ -54,6 +64,13 @@ const router = Router();
  *                       items:
  *                         $ref: '#/components/schemas/User'
  */
-router.route('/').get(getAllClients);
+router.route
+    .get("/users", getAllUsers)
+    .get("/users/:id", getUser)
+    .get("/users/query", queryUser)
+    .post("/users/add", createUser)
+    .post(createOne)
+    .patch("/users/:id/update", updateUser)
+    .del("/users/:id", deleteUser);
 
 module.exports = router;
