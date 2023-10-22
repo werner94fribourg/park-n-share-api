@@ -2,11 +2,17 @@
  * All utilities functions used in the application.
  * @module utils
  */
-const { Server } = require('http');
-const { Connection } = require('mongoose');
-const mongoose = require('mongoose');
-const { Response } = require('express');
 const AppError = require('./classes/AppError');
+const { Connection } = require('mongoose');
+const { Response } = require('express');
+const { Server } = require('http');
+const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
+const { TWILIO_CLIENT } = require('./globals');
+
+const {
+  env: { TWILIO_PHONE_NUMBER },
+} = process;
 
 /**
  * Function used to handle mongoose invalid requests generating CastError.
@@ -125,4 +131,22 @@ exports.shutDownAll = async (server, dbConnection, message, error) => {
  */
 exports.catchAsync = fn => (req, res, next) => {
   fn(req, res, next).catch(err => next(err));
+};
+
+exports.createSendToken = id => {
+  const token = jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN,
+  });
+
+  return { status: 'success', token };
+};
+
+exports.sendPinCode = async user => {
+  const pinCode = user.createPinCode();
+  await user.save({ validateBeforeSave: false });
+  TWILIO_CLIENT.messages.create({
+    from: TWILIO_PHONE_NUMBER,
+    to: user.phone,
+    body: `${pinCode}`,
+  });
 };

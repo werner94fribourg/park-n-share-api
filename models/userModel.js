@@ -2,11 +2,12 @@
  * Definition of the User Model used in the application and generating the User Collection in the MongoDB Database.
  * @module userModel
  */
-const { PASSWORD_VALIDATOR } = require('../utils/globals');
+const { PASSWORD_VALIDATOR, CONFIRMATION_DELAY } = require('../utils/globals');
 const bcrypt = require('bcryptjs');
 const { isEmail } = require('validator');
 const mongoose = require('mongoose');
 const { phone } = require('phone');
+const crypto = require('crypto');
 
 const validatePassword = value => PASSWORD_VALIDATOR.validate(value);
 
@@ -74,6 +75,19 @@ const userSchema = new mongoose.Schema({
     type: Date,
     select: false,
   },
+  isConfirmed: {
+    type: Boolean,
+    default: false,
+    select: false,
+  },
+  pinCode: {
+    type: String,
+    select: false,
+  },
+  pinCodeExpires: {
+    type: Date,
+    select: false,
+  },
 });
 
 // Creation of the user or modification of the password
@@ -103,7 +117,19 @@ userSchema.pre('save', async function (next) {
 
 // Password checking when the user tries to connect
 userSchema.methods.correctPassword = async (writtenPassword, userPassword) =>
-    await bcrypt.compare(writtenPassword, userPassword);
+  await bcrypt.compare(writtenPassword, userPassword);
+
+userSchema.methods.createPinCode = function () {
+  const pinCode = Math.floor(Math.random() * 1000000 + 100000);
+
+  const cryptedPin = crypto
+    .createHash('sha256')
+    .update(`${pinCode}`)
+    .digest('hex');
+  this.pinCode = crypto.createHash('sha256').update(`${pinCode}`).digest('hex');
+  this.pinCodeExpires = Date.now() + CONFIRMATION_DELAY;
+  return pinCode;
+};
 
 /**
  * The User model object generated from mongoose.

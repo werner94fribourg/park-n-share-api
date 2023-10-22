@@ -8,3 +8,7 @@ docs
 .idea/modules.xml
 .idea/thingy-api-blue.iml
 .idea/vcs.xml
+
+.vscode
+
+.idea

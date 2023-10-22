@@ -2,6 +2,12 @@
  * All global parameters contained in the application.
  * @module globals
  */
+const PasswordValidator = require('password-validator');
+const twilio = require('twilio');
+
+const {
+  env: { ACCOUNT_SID, TWILIO_AUTH_TOKEN },
+} = process;
 
 /**
  * Base URL of the API.
@@ -26,3 +32,29 @@ exports.FRONT_END_URL = 'http://localhost:3000/';
  * @type {string[]}
  */
 exports.PARAMETER_WHITELIST = [];
+
+const PASSWORD_VALIDATOR = new PasswordValidator();
+
+PASSWORD_VALIDATOR.is()
+  .min(8, 'The password must contain at least 8 characters.') // Minimum length 8
+  .is()
+  .max(100, 'The password must contain at most 100 characters.') // Maximum length 100
+  .has()
+  .uppercase(1, 'The password must contain at least 1 letter in uppercase.') // Must have uppercase letters
+  .has()
+  .lowercase(1, 'The password must contain at least 1 letter in lowercase.') // Must have lowercase letters
+  .has()
+  .digits(1, 'The password must contain at least 1 digit.') // Must have at least 1 digits
+  .has()
+  .symbols(1, 'The password must contain at least 1 special character.') // Must contain at least 1 symbol
+  .has()
+  .not()
+  .spaces(1, 'The password must not contain spaces.'); // Must not contain spaces
+
+exports.PASSWORD_VALIDATOR = PASSWORD_VALIDATOR;
+
+const TWILIO_CLIENT = twilio(ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+
+exports.TWILIO_CLIENT = TWILIO_CLIENT;
+
+exports.CONFIRMATION_DELAY = 5 * 60 * 1000; // 5 minutes

@@ -2,7 +2,11 @@
  * User resource router of the REST API.
  * @module userRoutes
  */
-const { signin, signup } = require('../../controllers/authController');
+const {
+  signin,
+  signup,
+  confirmPin,
+} = require('../../controllers/authController');
 const { Router } = require('express');
 const { getAllUsers } = require('../../controllers/userController');
 
@@ -57,8 +61,10 @@ const router = Router();
  */
 router.route('/').get(getAllUsers);
 
-router.route('/signup').get(signup);
+router.route('/signup').post(signup);
 
 router.route('/signin').post(signin);
+
+router.route('/confirm-pin').post(confirmPin);
 
 module.exports = router;

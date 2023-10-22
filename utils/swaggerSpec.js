@@ -2,11 +2,12 @@
  * Swagger specification object generation.
  * @module swaggerSpec
  */
+const { API_ROUTE } = require('./globals');
+const { SwaggerUiOptions } = require('swagger-ui-express');
 const fs = require('fs');
 const swaggerJsDoc = require('swagger-jsdoc');
-const { SwaggerUiOptions } = require('swagger-ui-express');
-const { API_ROUTE } = require('./globals');
 const { version } = JSON.parse(fs.readFileSync(`${__dirname}/../package.json`));
+
 const {
   env: { API_URL },
 } = process;
