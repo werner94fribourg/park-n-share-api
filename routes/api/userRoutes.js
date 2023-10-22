@@ -1,19 +1,10 @@
 /**
  * User resource router of the REST API.
- * @module clientRoutes
+ * @module userRoutes
  */
+const { signin, signup } = require('../../controllers/authController');
 const { Router } = require('express');
-// const { getAllClients } = require('../../controllers/userController');
-
-const {
-    getAllUsers,
-    createUser,
-    updateUser,
-    queryUser,
-    getUser,
-    deleteUser,
-    createOne,
-} = require('../../controllers/userController');
+const { getAllUsers } = require('../../controllers/userController');
 
 /**
  * The User resource router.
@@ -64,13 +55,10 @@ const router = Router();
  *                       items:
  *                         $ref: '#/components/schemas/User'
  */
-router.route
-    .get("/users", getAllUsers)
-    .get("/users/:id", getUser)
-    .get("/users/query", queryUser)
-    .post("/users/add", createUser)
-    .post(createOne)
-    .patch("/users/:id/update", updateUser)
-    .del("/users/:id", deleteUser);
+router.route('/').get(getAllUsers);
+
+router.route('/signup').get(signup);
+
+router.route('/signin').post(signin);
 
 module.exports = router;

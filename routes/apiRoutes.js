@@ -3,7 +3,6 @@
  * @module apiRoutes
  */
 const { Router } = require('express');
-
 const userRouter = require('./api/userRoutes');
 
 /**
