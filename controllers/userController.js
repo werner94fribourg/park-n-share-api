@@ -5,7 +5,7 @@
 
 const { Request, Response, NextFunction } = require('express');
 const User = require('../models/userModel');
-const APIFeatures = require('../utils/classes/APIFeatures');
+// const APIFeatures = require('../utils/classes/APIFeatures');
 const AppError = require('../utils/classes/AppError');
 const { catchAsync } = require('../utils/utils');
 const {user} = require("express/lib/request");
@@ -21,34 +21,34 @@ exports.getAllUsers = (Model = User, filterOptions = { role: { $ne: 'admin' }, _
         const filter = filterOptions || {};
 
         const { query } = req;
-        const features = new APIFeatures(Model, query);
+        // const features = new APIFeatures(Model, query);
 
         const collectionName = Model.collection.collectionName.toLowerCase();
         // COMPARISON
-        try {
-            const dbQuery = (
-                await features
-                    .build(filter)
-                    //SORTING
-                    .sort()
-                    //FIELD SELECTION
-                    .limitFields()
-                    //PAGINATION
-                    .paginate()
-            ).getQuery();
-
-            // QUERY EXECUTION
-            // const docs = await dbQuery.explain();
-            const docs = await dbQuery;
-
-            res
-                .status(200)
-                .json({ status: 'success', data: { [collectionName]: docs } });
-        } catch (err) {
-            if (err.message === "This page doesn't exist.") {
-                next(new AppError(err.message, 404));
-            }
-        }
+        // try {
+        //     const dbQuery = (
+        //         await features
+        //             .build(filter)
+        //             //SORTING
+        //             .sort()
+        //             //FIELD SELECTION
+        //             .limitFields()
+        //             //PAGINATION
+        //             .paginate()
+        //     ).getQuery();
+        //
+        //     // QUERY EXECUTION
+        //     // const docs = await dbQuery.explain();
+        //     const docs = await dbQuery;
+        //
+        //     res
+        //         .status(200)
+        //         .json({ status: 'success', data: { [collectionName]: docs } });
+        // } catch (err) {
+        //     if (err.message === "This page doesn't exist.") {
+        //         next(new AppError(err.message, 404));
+        //     }
+        // }
     });
 
 exports.getUser = () =>
