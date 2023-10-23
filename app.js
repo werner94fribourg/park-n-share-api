@@ -36,7 +36,7 @@ const {
 // Set static directory
 app.use(express.static(path.join(__dirname, PUBLIC_FOLDER)));
 
-// Set view template engine (used for e-mails)
+// Set view template engine (used for emails)
 app.set('view engine', 'ejs');
 
 // Dev logging

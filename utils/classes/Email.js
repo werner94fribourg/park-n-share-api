@@ -1,16 +1,51 @@
+/**
+ * Email module, containing the Email prototype function used to handle Email generation and sending.
+ * @module Email
+ */
 const nodemailer = require('nodemailer');
+const { Transporter } = require('nodemailer');
 const ejs = require('ejs');
 const { htmlToText } = require('html-to-text');
+const User = require('../../models/userModel');
 
-module.exports = class Email {
+/**
+ * Email prototype function, used to create email templates and send it to the requested users.
+ */
+class Email {
+  /**
+   * Constructor function used to generate a new instance of an Email object.
+   * @param {User} user The user to which we want to send an email.
+   * @param {string} url The facultative url link we want to be contained in the email.
+   */
   constructor(user, url) {
     const { email, username } = user;
+    /**
+     * @private
+     * @readonly
+     */
     this.to = email;
+    /**
+     * @private
+     * @readonly
+     */
     this.name = username;
+    /**
+     * @private
+     * @readonly
+     */
     this.url = url;
+    /**
+     * @private
+     * @readonly
+     */
     this.from = `Werner Schmid <${process.env.MAIL_FROM}>`;
   }
 
+  /**
+   * Function used to create a new transporter object that will send the email using a specific service.
+   * @returns {Transporter} The new transporter object.
+   * @private
+   */
   newTransport() {
     if (process.env.NODE_ENV === 'production') {
       // Sendgrid
@@ -32,7 +67,12 @@ module.exports = class Email {
     });
   }
 
-  // Send the actual email
+  /**
+   * Async Function used to send a specific template file email to the requested user.
+   * @param {string} template The template ejs file we want to send as an email.
+   * @param {string} subject The subject of the email.
+   * @private
+   */
   async send(template, subject) {
     const { to, from, name, url } = this;
     // Render the HTML based on a pub template
@@ -59,7 +99,12 @@ module.exports = class Email {
     await this.newTransport().sendMail(mailOptions);
   }
 
+  /**
+   * Async function used to send a welcome email to the user.
+   */
   async sendWelcome() {
     await this.send('inscription', "Welcome to Park'N'Share!");
   }
-};
+}
+
+module.exports = Email;

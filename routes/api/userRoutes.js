@@ -25,12 +25,58 @@ const router = Router();
  *       properties:
  *         _id:
  *           type: string
- *           description: The id of the user
+ *           description: The id of the user.
  *           example: 642c38f3b7ed1dbd25858e9e
  *         username:
  *           type: string
- *           description: The username of the user
+ *           description: The username of the user.
  *           example: johndoe27
+ *         email:
+ *           type: string
+ *           description: The email of the user.
+ *           example: johndoe@example.com
+ *         phone:
+ *           type: string
+ *           description: The phone number of the user.
+ *           example: +41888888888
+ *         role:
+ *           type: string
+ *           description: The role of the user.
+ *           example: client
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     ServerError:
+ *       type: object
+ *       properties:
+ *         status:
+ *           type: string
+ *           description: The status of the response.
+ *           example: error
+ *         message:
+ *           type: string
+ *           description: The error message.
+ *           example: Something went wrong. Try Again!
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     SuccessLogin:
+ *       type: object
+ *       properties:
+ *         status:
+ *           type: string
+ *           description: The login status of the user.
+ *           example: success
+ *         username:
+ *           type: string
+ *           description: The login success message.
+ *           example: Please confirm with the PIN code sent to your phone number.
  */
 
 /**
@@ -39,10 +85,10 @@ const router = Router();
  *   get:
  *     tags:
  *       - User
- *     summary: Route used to get all the users (students and teachers) in the application
+ *     summary: Route used to get all the users (students and teachers) in the application.
  *     responses:
  *       200:
- *         description: List of all users
+ *         description: List of all users.
  *         content:
  *           application/json:
  *             schema:
@@ -58,13 +104,152 @@ const router = Router();
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/User'
+ *       500:
+ *         description: Internal Server Error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ServerError'
  */
 router.route('/').get(getAllUsers);
 
+/**
+ * @swagger
+ * /users/signup:
+ *   post:
+ *     tags:
+ *       - Authentication
+ *     summary: Route used to signup an user.
+ *     responses:
+ *       201:
+ *         description: The successful registration status.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessLogin'
+ *       500:
+ *         description: Internal Server Error.
+ *         content:
+ *           application/json:
+ *             examples:
+ *               InternalServerExample:
+ *                 summary: Generic internal server error.
+ *                 value:
+ *                   status: error
+ *                   message: Something went wrong. Try Again!
+ *               pinSendingExample:
+ *                 summary: Pin code sending error.
+ *                 value:
+ *                   status: error
+ *                   message: There was an error sending the pin code. Please retry or contact us at admin@parknshare.com.
+ */
 router.route('/signup').post(signup);
 
+/**
+ * @swagger
+ * /users/signin:
+ *   post:
+ *     tags:
+ *       - Authentication
+ *     summary: Route used to signin an user.
+ *     responses:
+ *       200:
+ *         description: The successful login status.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessLogin'
+ *       400:
+ *         description: Missing fields.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: fail
+ *                 message:
+ *                   type: string
+ *                   example: Please provide email and password!
+ *       401:
+ *         description: Incorrect credentials.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: fail
+ *                 message:
+ *                   type: string
+ *                   example: Incorrect credentials.
+ *       500:
+ *         description: Internal Server Error.
+ *         content:
+ *           application/json:
+ *             examples:
+ *               InternalServerExample:
+ *                 summary: Generic internal server error.
+ *                 value:
+ *                   status: error
+ *                   message: Something went wrong. Try Again!
+ *               pinSendingExample:
+ *                 summary: Pin code sending error.
+ *                 value:
+ *                   status: error
+ *                   message: There was an error sending the pin code. Please retry or contact us at admin@parknshare.com.
+ */
 router.route('/signin').post(signin);
 
+/**
+ * @swagger
+ * /users/confirm-pin:
+ *   post:
+ *     tags:
+ *       - Authentication
+ *     summary: Route used to confirm the pin code sent to the user in the signin or signup process.
+ *     responses:
+ *       200:
+ *         description: The successful pin confirmation status.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   description: The status of the response.
+ *                   example: success
+ *                 token:
+ *                   type: string
+ *                   description: The login token.
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY0MmJmN2I3YWIzOTY2Njc5MmZlNWE2ZiIsImlhdCI6MTY4MDYwNDUxMCwiZXhwIjoxNjgwNjA4MTEwfQ.o7R-5d-mb7mmi3EychbcIl_AfHW6Cuq0SGOo0UG99V4
+ *                 message:
+ *                   type: string
+ *                   description: The success PIN confirmation message.
+ *                   example: Welcome back!
+ *       401:
+ *         description: Invalid PIN code.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: fail
+ *                 message:
+ *                   type: string
+ *                   example: Invalid PIN Code.
+ *       500:
+ *         description: Internal Server Error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ServerError'
+ */
 router.route('/confirm-pin').post(confirmPin);
 
 module.exports = router;

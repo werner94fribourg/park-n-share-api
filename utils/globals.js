@@ -3,6 +3,7 @@
  * @module globals
  */
 const PasswordValidator = require('password-validator');
+const TwilioSDK = require('twilio');
 const twilio = require('twilio');
 
 const {
@@ -51,10 +52,22 @@ PASSWORD_VALIDATOR.is()
   .not()
   .spaces(1, 'The password must not contain spaces.'); // Must not contain spaces
 
+/**
+ * Password validator in the application.
+ * @type {PasswordValidator}
+ */
 exports.PASSWORD_VALIDATOR = PASSWORD_VALIDATOR;
 
 const TWILIO_CLIENT = twilio(ACCOUNT_SID, TWILIO_AUTH_TOKEN);
 
+/**
+ * Twilio authentication client used to send SMS to the user.
+ * @type {TwilioSDK.Twilio}
+ */
 exports.TWILIO_CLIENT = TWILIO_CLIENT;
 
+/**
+ * Confirmation delay given in ms given to the user to type his PIN code in the signin/signup request.
+ * @type {number}
+ */
 exports.CONFIRMATION_DELAY = 5 * 60 * 1000; // 5 minutes

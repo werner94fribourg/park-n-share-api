@@ -15,6 +15,15 @@ const validatePassword = value => PASSWORD_VALIDATOR.validate(value);
  * The representation of the User model
  * @typedef User
  * @property {string} username The username of the user.
+ * @property {string} email The email of the user.
+ * @property {string} phone The phone number of the user.
+ * @property {string} password The password of the user.
+ * @property {string} passwordConfirm The password confirmation of the user, which will not be stored in the database.
+ * @property {string} role The role of the user.
+ * @property {Date} passwordChangedAt The last moment where the user changed his password.
+ * @property {boolean} isConfirmed The confirmation status of the user.
+ * @property {string} pinCode The hashed pin code sent to the user when he's trying to connect / register.
+ * @property {Date} pinCodeExpires The expiration time of the pin code validity.
  */
 
 /**
@@ -126,7 +135,7 @@ userSchema.methods.createPinCode = function () {
     .createHash('sha256')
     .update(`${pinCode}`)
     .digest('hex');
-  this.pinCode = crypto.createHash('sha256').update(`${pinCode}`).digest('hex');
+  this.pinCode = cryptedPin;
   this.pinCodeExpires = Date.now() + CONFIRMATION_DELAY;
   return pinCode;
 };

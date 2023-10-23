@@ -94,7 +94,7 @@ exports.sendErrorProd = (err, res) => {
   // Send generic message
   res
     .status(500)
-    .json({ status: 'error', message: 'Something went wrong. Try Again !' });
+    .json({ status: 'error', message: 'Something went wrong. Try Again!' });
 };
 
 /**
