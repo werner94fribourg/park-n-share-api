@@ -26,3 +26,9 @@ exports.FRONT_END_URL = 'http://localhost:3000/';
  * @type {string[]}
  */
 exports.PARAMETER_WHITELIST = [];
+
+exports.INFLUX_URL = 'http://127.0.0.1:8086';
+exports.INFLUX_TOKEN =
+  '62YhERKnAWyPd59PYO3aS0rCnQlY4pdynwpM_Bl7-AJqjGcksfPZW8FjHjnePGiMlYTiWrePPl_Uqqg18d_WaQ==';
+exports.INFLUX_ORG = 'pnsOrg';
+exports.INFLUX_BUCKET = 'pnsBucket';
