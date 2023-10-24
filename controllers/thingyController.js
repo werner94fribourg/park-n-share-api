@@ -35,9 +35,23 @@ const thingDescription = {
   },
 };
 
+const thingyProperties = { temperature: [] };
+
 exports.getThingDescription = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: 'success',
     data: { thingDescription },
+  });
+});
+
+exports.addPropertyTemp = catchAsync(async (req, res, next) => {
+  const incomingTempData = req.body;
+  thingyProperties.temperature.push({
+    value: incomingTempData.data,
+    timestamp: incomingTempData.ts,
+  });
+  res.status(200).json({
+    status: 'success',
+    data: thingyProperties,
   });
 });

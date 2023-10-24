@@ -3,7 +3,10 @@
  * @module thingyRoutes
  */
 const { Router } = require('express');
-const { getThingDescription } = require('../../controllers/thingyController');
+const {
+  getThingDescription,
+  addPropertyTemp,
+} = require('../../controllers/thingyController');
 
 /**
  * The Thingy resource router.
@@ -55,5 +58,6 @@ const router = Router();
  *                         $ref: '#/components/schemas/User'
  */
 router.route('/').get(getThingDescription);
+router.route('/properties/temp').post(addPropertyTemp);
 
 module.exports = router;

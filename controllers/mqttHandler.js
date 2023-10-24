@@ -1,5 +1,5 @@
 const mqtt = require('mqtt');
-const Influx = require('influx');
+const axios = require('axios');
 
 // MQTT credentials
 const mqttOptions = {
@@ -20,8 +20,24 @@ mqttClient.on('message', (topic, message) => {
   // Parse the MQTT message
   const data = JSON.parse(message);
 
+  if (data.appId == 'TEMP') {
+    axios
+      .post(
+        'http://127.0.0.1:3001/api/v1/things/thingy91/properties/temp',
+        data,
+      )
+      .then(response => {
+        console.log(
+          'Response from server:',
+          JSON.stringify(response.data, null, 2),
+        );
+      })
+      .catch(error => {
+        console.error('Error sending data:', error);
+      });
+  }
   // Store the data in InfluxDB
-  data.state ? console.log('Ignored') : console.log(data);
+  //data.state ? console.log('Ignored') : console.log(data);
 });
 
 // Handle MQTT errors

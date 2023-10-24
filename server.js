@@ -3,7 +3,7 @@
  * @module server
  */
 const dotenv = require('dotenv');
-// const mqttHandler = require('./controllers/mqttHandler');
+const mqttHandler = require('./controllers/mqttHandler');
 dotenv.config({ path: './config.env' });
 
 const mongoose = require('mongoose');
