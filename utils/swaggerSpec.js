@@ -32,11 +32,11 @@ const options = {
     tags: [
       {
         name: 'Authentication',
-        description: 'All operations related to user authentication.',
+        description: 'All operations related to user authentication',
       },
       {
         name: 'User',
-        description: 'All operations related to user management.',
+        description: 'All operations related to user management',
       },
     ],
     components: {

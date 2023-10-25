@@ -6,9 +6,11 @@ const { NextFunction, Request, Response } = require('express');
 const { catchAsync, createSendToken, sendPinCode } = require('../utils/utils');
 const AppError = require('../utils/classes/AppError');
 const User = require('../models/userModel');
-const { CONFIRMATION_DELAY } = require('../utils/globals');
+const { CONFIRMATION_DELAY, FRONT_END_URL } = require('../utils/globals');
 const crypto = require('crypto');
 const Email = require('../utils/classes/Email');
+const jwt = require('jsonwebtoken');
+const { promisify } = require('util');
 
 exports.signup = catchAsync(
   /**
@@ -39,7 +41,7 @@ exports.signup = catchAsync(
           500,
         ),
       );
-      console.log(err);
+      console.error(err);
       return;
     }
 
@@ -90,7 +92,8 @@ exports.confirmPin = catchAsync(
     user.pinCodeExpires = undefined;
 
     await user.save({ validateBeforeSave: false });
-    const resObject = createSendToken(user._id);
+    // Create jwt token and authenticate the user if he correctly signed in/up
+    const { resObject, cookieOptions } = createSendToken(req, user._id);
 
     resObject['message'] = isConfirmed
       ? 'Welcome back!'
@@ -102,6 +105,9 @@ exports.confirmPin = catchAsync(
       console.error('Error while trying to send the confirmation email.');
       console.error(err);
     }
+
+    // send the token as a httpOnly cookie
+    res.cookie('jwt', resObject.token, cookieOptions);
 
     res.status(200).json(resObject);
   },
@@ -125,14 +131,18 @@ exports.signin = catchAsync(
 
     const user = await User.findOne({ email }, null, {
       disableMiddlewares: true,
-    }).select('+password');
+    }).select('+password +isConfirmed');
 
-    if (!user || !(await user.correctPassword(password, user.password))) {
+    if (
+      !user ||
+      !user.isConfirmed ||
+      !(await user.correctPassword(password, user.password))
+    ) {
       next(new AppError('Incorrect credentials.', 401));
     }
 
     try {
-      await sendPinCode(newUser);
+      await sendPinCode(user);
     } catch (err) {
       next(
         new AppError(
@@ -140,7 +150,7 @@ exports.signin = catchAsync(
           500,
         ),
       );
-      console.log(err);
+      console.error(err);
       return;
     }
 
@@ -150,3 +160,123 @@ exports.signin = catchAsync(
     });
   },
 );
+
+exports.protect = catchAsync(async (req, _, next) => {
+  // 1) Get the token from the header / cookie and check if it exists
+  const {
+    headers: { authorization },
+    cookies: { jwt: cookieToken },
+  } = req;
+
+  const {
+    env: { JWT_SECRET },
+  } = process;
+
+  let token = '';
+
+  if (authorization && authorization.startsWith('Bearer'))
+    token = authorization.split(' ')[1];
+  else if (cookieToken) token = cookieToken;
+
+  if (!token) {
+    next(
+      new AppError(
+        'You are not logged in! Please log in to get access to this route.',
+        401,
+      ),
+    );
+
+    return;
+  }
+
+  // 2) Verify the token : errors that can be thrown in the process and catched by catchAsync
+  //  JSONWebTokenError : invalid token
+  //  TokenExpiredError : the token has expired
+  const decoded = await promisify(jwt.verify)(token, JWT_SECRET);
+
+  // 3) Check if the user still exists
+  const currentUser = await User.findById(decoded.id).select(
+    '+passwordChangedAt +isConfirmed +isEmailConfirmed',
+  );
+
+  if (!currentUser) {
+    next(
+      new AppError("The requested account doesn't exist or was deleted.", 401),
+    );
+    return;
+  }
+
+  // TODO:4) Check if the user has changed password after the token was issued
+
+  //Access the logged user to be used in the next middleware function
+  req.user = currentUser;
+
+  next();
+});
+
+exports.sendConfirmationEmail = catchAsync(async (req, res, next) => {
+  const { user } = req;
+
+  const confirmEmailToken = user.createConfirmEmailToken();
+
+  await user.save({ validateBeforeSave: false });
+
+  if (user.isEmailConfirmed) {
+    next(new AppError('Your email address was already confirmed.', 403));
+    return;
+  }
+
+  try {
+    const url = `${FRONT_END_URL}/confirm-email/${confirmEmailToken}`;
+    await new Email(user, url).sendEmailConfirmation();
+  } catch (err) {
+    user.confirmEmailToken = undefined;
+    user.confirmEmailExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+    next(
+      new AppError(
+        'There was an error sending the confirmation email. Please contact us at admin@parknshare.com!',
+        500,
+      ),
+    );
+
+    console.error(err);
+  }
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Confirmation email successfully sent to your address.',
+  });
+});
+
+exports.confirmEmail = catchAsync(async (req, res, next) => {
+  const {
+    params: { confToken },
+  } = req;
+
+  const confirmEmailToken = crypto
+    .createHash('sha256')
+    .update(confToken)
+    .digest('hex');
+
+  const user = await User.findOne({
+    confirmEmailToken,
+    confirmEmailExpires: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    next(new AppError('Invalid link!', 404));
+    return;
+  }
+
+  user.isEmailConfirmed = true;
+  user.confirmEmailToken = undefined;
+  user.confirmEmailExpires = undefined;
+
+  user.save({ validateBeforeSave: false });
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Email address successfully confirmed.',
+  });
+});

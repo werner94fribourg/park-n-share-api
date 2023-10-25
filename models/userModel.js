@@ -2,12 +2,17 @@
  * Definition of the User Model used in the application and generating the User Collection in the MongoDB Database.
  * @module userModel
  */
-const { PASSWORD_VALIDATOR, CONFIRMATION_DELAY } = require('../utils/globals');
+const {
+  PASSWORD_VALIDATOR,
+  CONFIRMATION_DELAY,
+  EMAIL_CONFIRMATION_DELAY,
+} = require('../utils/globals');
 const bcrypt = require('bcryptjs');
 const { isEmail } = require('validator');
 const mongoose = require('mongoose');
 const { phone } = require('phone');
 const crypto = require('crypto');
+const { createLinkToken } = require('../utils/utils');
 
 const validatePassword = value => PASSWORD_VALIDATOR.validate(value);
 
@@ -97,6 +102,19 @@ const userSchema = new mongoose.Schema({
     type: Date,
     select: false,
   },
+  isEmailConfirmed: {
+    type: Boolean,
+    select: false,
+    default: false,
+  },
+  confirmEmailToken: {
+    type: String,
+    select: false,
+  },
+  confirmEmailExpires: {
+    type: Date,
+    select: false,
+  },
 });
 
 // Creation of the user or modification of the password
@@ -128,6 +146,7 @@ userSchema.pre('save', async function (next) {
 userSchema.methods.correctPassword = async (writtenPassword, userPassword) =>
   await bcrypt.compare(writtenPassword, userPassword);
 
+// Create a pin code for 2-step confirmation and hash the pin to be able to store it in the database.
 userSchema.methods.createPinCode = function () {
   const pinCode = Math.floor(Math.random() * 1000000 + 100000);
 
@@ -138,6 +157,17 @@ userSchema.methods.createPinCode = function () {
   this.pinCode = cryptedPin;
   this.pinCodeExpires = Date.now() + CONFIRMATION_DELAY;
   return pinCode;
+};
+
+// Create a confirmation token link to be sent to the user when he wants to confirm his e-mail address
+userSchema.methods.createConfirmEmailToken = function () {
+  const [confirmEmailToken, hashedConfirmEmailToken] = createLinkToken();
+
+  this.confirmEmailToken = hashedConfirmEmailToken;
+
+  this.confirmEmailExpires = Date.now() + EMAIL_CONFIRMATION_DELAY; // Set up confirmation link validity
+
+  return confirmEmailToken;
 };
 
 /**

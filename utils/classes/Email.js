@@ -105,6 +105,13 @@ class Email {
   async sendWelcome() {
     await this.send('inscription', "Welcome to Park'N'Share!");
   }
+
+  /**
+   * Async function used to send a confirmation email to the user such that he can confirm his email address.
+   */
+  async sendEmailConfirmation() {
+    await this.send('confirmEmail', 'Please confirm your email address.');
+  }
 }
 
 module.exports = Email;

@@ -26,7 +26,7 @@ exports.PUBLIC_FOLDER = 'public';
  * Base URL of the frontend application.
  * @type {string}
  */
-exports.FRONT_END_URL = 'http://localhost:3000/';
+exports.FRONT_END_URL = 'http://localhost:3000';
 
 /**
  * List of url parameters that can happen multiple times.
@@ -71,3 +71,5 @@ exports.TWILIO_CLIENT = TWILIO_CLIENT;
  * @type {number}
  */
 exports.CONFIRMATION_DELAY = 5 * 60 * 1000; // 5 minutes
+
+exports.EMAIL_CONFIRMATION_DELAY = 10 * 24 * 60 * 60 * 1000; // 10 days

@@ -6,6 +6,7 @@ const AppError = require('./classes/AppError');
 const { Connection } = require('mongoose');
 const { Response } = require('express');
 const { Server } = require('http');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const { TWILIO_CLIENT } = require('./globals');
@@ -57,8 +58,7 @@ exports.handleValidationErrorDB = error => {
  * Function used to handle requests containing an invalid JWT authentication token.
  * @returns {AppError} An invalid JWT AppError object with a 401 status code.
  */
-exports.handleJWTError = () =>
-  new AppError('Invalid token. Please log in again!', 401);
+exports.handleJWTError = () => new AppError('Invalid token!', 401);
 
 /**
  * Function used to handler requests containing an invalid expired JWT authentication token.
@@ -133,12 +133,22 @@ exports.catchAsync = fn => (req, res, next) => {
   fn(req, res, next).catch(err => next(err));
 };
 
-exports.createSendToken = id => {
+exports.createSendToken = (req, id) => {
   const token = jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN,
   });
 
-  return { status: 'success', token };
+  const cookieOptions = {
+    expires: new Date(
+      Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 60 * 600 * 1000,
+    ),
+    httpOnly: true,
+    sameSite: 'none',
+    secure: req.secure || req.header('x-forwarded-proto') === 'https',
+    domain: req.get('origin'),
+  };
+
+  return { resObject: { status: 'success', token }, cookieOptions };
 };
 
 exports.sendPinCode = async user => {
@@ -149,4 +159,10 @@ exports.sendPinCode = async user => {
     to: user.phone,
     body: `${pinCode}`,
   });
+};
+
+exports.createLinkToken = () => {
+  const token = crypto.randomBytes(32).toString('hex');
+
+  return [token, crypto.createHash('sha256').update(token).digest('hex')];
 };
