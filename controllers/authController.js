@@ -135,7 +135,7 @@ exports.signin = catchAsync(
 
     if (
       !user ||
-      !user.isConfirmed ||
+      !user?.isConfirmed ||
       !(await user.correctPassword(password, user.password))
     ) {
       next(new AppError('Incorrect credentials.', 401));
