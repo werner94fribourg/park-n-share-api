@@ -65,7 +65,7 @@ exports.confirmPin = catchAsync(
    */
   async (req, res, next) => {
     const {
-      body: { username, pinCode },
+      body: { email, pinCode },
     } = req;
 
     const cryptedPin = crypto
@@ -74,7 +74,7 @@ exports.confirmPin = catchAsync(
       .digest('hex');
 
     const user = await User.findOne({
-      username,
+      email,
       pinCode: cryptedPin,
       pinCodeExpires: { $gt: Date.now() },
     }).select('+isConfirmed +pinCode +pinCodeExpires');
