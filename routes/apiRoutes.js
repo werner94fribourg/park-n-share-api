@@ -7,7 +7,7 @@ const userRouter = require('./api/userRoutes');
 
 /**
  * The main router of the application.
- * @typedef {Router}
+ * @type {Router}
  */
 const router = Router();
 

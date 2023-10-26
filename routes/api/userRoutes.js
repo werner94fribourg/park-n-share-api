@@ -15,7 +15,7 @@ const { getAllUsers } = require('../../controllers/userController');
 
 /**
  * The User resource router.
- * @typedef {Router}
+ * @type {Router}
  */
 const router = Router();
 

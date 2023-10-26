@@ -2,7 +2,6 @@
  * Functions used to handle the authentication in the API
  * @module authController
  */
-const { NextFunction, Request, Response } = require('express');
 const { catchAsync, createSendToken, sendPinCode } = require('../utils/utils');
 const AppError = require('../utils/classes/AppError');
 const User = require('../models/userModel');
@@ -15,9 +14,9 @@ const { promisify } = require('util');
 exports.signup = catchAsync(
   /**
    * Function used to handle the signup process of a guest user.
-   * @param {Request} req The request object of the Express framework, used to handle the request sent by the client.
-   * @param {Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
-   * @param {NextFunction} next The next function of the express framework, used to handle the next middleware function passed to the express pipeline.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
    */
   async (req, res, next) => {
     const {
@@ -60,9 +59,9 @@ exports.signup = catchAsync(
 exports.confirmPin = catchAsync(
   /**
    * Function used to handle the pin confirmation of an user in the signin / signup request.
-   * @param {Request} req The request object of the Express framework, used to handle the request sent by the client.
-   * @param {Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
-   * @param {NextFunction} next The next function of the express framework, used to handle the next middleware function passed to the express pipeline.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
    */
   async (req, res, next) => {
     const {
@@ -116,9 +115,9 @@ exports.confirmPin = catchAsync(
 exports.signin = catchAsync(
   /**
    * Function used to handle the signin process of a user.
-   * @param {Request} req The request object of the Express framework, used to handle the request sent by the client.
-   * @param {Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
-   * @param {NextFunction} next The next function of the express framework, used to handle the next middleware function passed to the express pipeline.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
    */ async (req, res, next) => {
     const {
       body: { email, password },
@@ -161,122 +160,153 @@ exports.signin = catchAsync(
   },
 );
 
-exports.protect = catchAsync(async (req, _, next) => {
-  // 1) Get the token from the header / cookie and check if it exists
-  const {
-    headers: { authorization },
-    cookies: { jwt: cookieToken },
-  } = req;
+exports.protect = catchAsync(
+  /**
+   * Function used to check if the user is logged in. It will continue to the next middleware function if it is the case, otherwise it will throw an error.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, _, next) => {
+    // 1) Get the token from the header / cookie and check if it exists
+    const {
+      headers: { authorization },
+      cookies: { jwt: cookieToken },
+    } = req;
 
-  const {
-    env: { JWT_SECRET },
-  } = process;
+    const {
+      env: { JWT_SECRET },
+    } = process;
 
-  let token = '';
+    let token = '';
 
-  if (authorization && authorization.startsWith('Bearer'))
-    token = authorization.split(' ')[1];
-  else if (cookieToken) token = cookieToken;
+    if (authorization && authorization.startsWith('Bearer'))
+      token = authorization.split(' ')[1];
+    else if (cookieToken) token = cookieToken;
 
-  if (!token) {
-    next(
-      new AppError(
-        'You are not logged in! Please log in to get access to this route.',
-        401,
-      ),
+    if (!token) {
+      next(
+        new AppError(
+          'You are not logged in! Please log in to get access to this route.',
+          401,
+        ),
+      );
+
+      return;
+    }
+
+    // 2) Verify the token : errors that can be thrown in the process and catched by catchAsync
+    //  JSONWebTokenError : invalid token
+    //  TokenExpiredError : the token has expired
+    const decoded = await promisify(jwt.verify)(token, JWT_SECRET);
+
+    // 3) Check if the user still exists
+    const currentUser = await User.findById(decoded.id).select(
+      '+passwordChangedAt +isConfirmed +isEmailConfirmed',
     );
 
-    return;
-  }
+    if (!currentUser) {
+      next(
+        new AppError(
+          "The requested account doesn't exist or was deleted.",
+          401,
+        ),
+      );
+      return;
+    }
 
-  // 2) Verify the token : errors that can be thrown in the process and catched by catchAsync
-  //  JSONWebTokenError : invalid token
-  //  TokenExpiredError : the token has expired
-  const decoded = await promisify(jwt.verify)(token, JWT_SECRET);
+    // TODO:4) Check if the user has changed password after the token was issued
 
-  // 3) Check if the user still exists
-  const currentUser = await User.findById(decoded.id).select(
-    '+passwordChangedAt +isConfirmed +isEmailConfirmed',
-  );
+    //5) Access the logged user to be used in the next middleware function if everything is fine
+    req.user = currentUser;
 
-  if (!currentUser) {
-    next(
-      new AppError("The requested account doesn't exist or was deleted.", 401),
-    );
-    return;
-  }
+    next();
+  },
+);
 
-  // TODO:4) Check if the user has changed password after the token was issued
+exports.sendConfirmationEmail = catchAsync(
+  /**
+   * Function used to send the confirmation link to the e-mail address of an user.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, res, next) => {
+    const { user } = req;
 
-  //Access the logged user to be used in the next middleware function
-  req.user = currentUser;
+    //1) Check if the user has already confirmed his email address
+    if (user.isEmailConfirmed) {
+      next(new AppError('Your email address was already confirmed.', 403));
+      return;
+    }
 
-  next();
-});
+    //2) Create email confirmation token and confirmation token expiration
+    //     The confirmation token will be set in the confirmation link in the confirmation email
+    const confirmEmailToken = user.createConfirmEmailToken();
 
-exports.sendConfirmationEmail = catchAsync(async (req, res, next) => {
-  const { user } = req;
+    await user.save({ validateBeforeSave: false });
 
-  const confirmEmailToken = user.createConfirmEmailToken();
+    //3) Sent the confirmation email
+    try {
+      const url = `${FRONT_END_URL}/confirm-email/${confirmEmailToken}`;
+      await new Email(user, url).sendEmailConfirmation();
+    } catch (err) {
+      user.confirmEmailToken = undefined;
+      user.confirmEmailExpires = undefined;
+      await user.save({ validateBeforeSave: false });
+      next(
+        new AppError(
+          'There was an error sending the confirmation email. Please contact us at admin@parknshare.com!',
+          500,
+        ),
+      );
 
-  await user.save({ validateBeforeSave: false });
+      console.error(err);
+    }
 
-  if (user.isEmailConfirmed) {
-    next(new AppError('Your email address was already confirmed.', 403));
-    return;
-  }
+    //4) Sent email success message to the user
+    res.status(200).json({
+      status: 'success',
+      message: 'Confirmation email successfully sent to your address.',
+    });
+  },
+);
 
-  try {
-    const url = `${FRONT_END_URL}/confirm-email/${confirmEmailToken}`;
-    await new Email(user, url).sendEmailConfirmation();
-  } catch (err) {
+exports.confirmEmail = catchAsync(
+  /**
+   * Function used to confirm an email address by using the confirmation token sent to the user by email.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, res, next) => {
+    const {
+      params: { confToken },
+    } = req;
+
+    const confirmEmailToken = crypto
+      .createHash('sha256')
+      .update(confToken)
+      .digest('hex');
+
+    const user = await User.findOne({
+      confirmEmailToken,
+      confirmEmailExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      next(new AppError('Invalid link!', 404));
+      return;
+    }
+
+    user.isEmailConfirmed = true;
     user.confirmEmailToken = undefined;
     user.confirmEmailExpires = undefined;
-    await user.save({ validateBeforeSave: false });
-    next(
-      new AppError(
-        'There was an error sending the confirmation email. Please contact us at admin@parknshare.com!',
-        500,
-      ),
-    );
 
-    console.error(err);
-  }
+    user.save({ validateBeforeSave: false });
 
-  res.status(200).json({
-    status: 'success',
-    message: 'Confirmation email successfully sent to your address.',
-  });
-});
-
-exports.confirmEmail = catchAsync(async (req, res, next) => {
-  const {
-    params: { confToken },
-  } = req;
-
-  const confirmEmailToken = crypto
-    .createHash('sha256')
-    .update(confToken)
-    .digest('hex');
-
-  const user = await User.findOne({
-    confirmEmailToken,
-    confirmEmailExpires: { $gt: Date.now() },
-  });
-
-  if (!user) {
-    next(new AppError('Invalid link!', 404));
-    return;
-  }
-
-  user.isEmailConfirmed = true;
-  user.confirmEmailToken = undefined;
-  user.confirmEmailExpires = undefined;
-
-  user.save({ validateBeforeSave: false });
-
-  res.status(200).json({
-    status: 'success',
-    message: 'Email address successfully confirmed.',
-  });
-});
+    res.status(200).json({
+      status: 'success',
+      message: 'Email address successfully confirmed.',
+    });
+  },
+);

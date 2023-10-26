@@ -3,13 +3,11 @@
  * @module utils
  */
 const AppError = require('./classes/AppError');
-const { Connection } = require('mongoose');
-const { Response } = require('express');
-const { Server } = require('http');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const { TWILIO_CLIENT } = require('./globals');
+const { Server } = require('http');
 
 const {
   env: { TWILIO_PHONE_NUMBER },
@@ -70,7 +68,7 @@ exports.handleJWTExpiredError = () =>
 /**
  * Function used to handle the respone object returned to the client when the server is in dev mode.
  * @param {Error} error The error object for which we want to send a response.
- * @param {Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+ * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
  */
 exports.sendErrorDev = (error, res) => {
   const { statusCode, status, message, stack } = error;
@@ -80,7 +78,7 @@ exports.sendErrorDev = (error, res) => {
 /**
  * Function used to handle the response object returned to the client when the server is in prod mode.
  * @param {Error} err the error object for which we want to send a response.
- * @param {Response} res the response object of the Express framework, used to handle the response we will give back to the end user.
+ * @param {import('express').Response} res the response object of the Express framework, used to handle the response we will give back to the end user.
  */
 exports.sendErrorProd = (err, res) => {
   if (err.isOperational) {
@@ -100,7 +98,7 @@ exports.sendErrorProd = (err, res) => {
 /**
  * Function used to gracefully shut down the server in the case of a fatal unhandled error happening on it.
  * @param {Server} server The HTTP server we want to gracefully shut down.
- * @param {Connection} dbConnection The opened mongoose db connection we want to shut down simultaneously as the server.
+ * @param {mongoose.Connection} dbConnection The opened mongoose db connection we want to shut down simultaneously as the server.
  * @param {string} message The error message we want to display when we shut down the server.
  * @param {Error} error The unhandled error that has caused the server to crash.
  */
@@ -133,6 +131,12 @@ exports.catchAsync = fn => (req, res, next) => {
   fn(req, res, next).catch(err => next(err));
 };
 
+/**
+ * Function used to generate a jwt authentication for an user.
+ * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+ * @param {string} id the id of the user for whom we want to create a jwt authentication token.
+ * @returns {Object} an object containing the response object that will be sent to the user and the cookie options for setting the jwt as httpOnly cookie.
+ */
 exports.createSendToken = (req, id) => {
   const token = jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN,
@@ -151,6 +155,10 @@ exports.createSendToken = (req, id) => {
   return { resObject: { status: 'success', token }, cookieOptions };
 };
 
+/**
+ * Function used to send a SMS to an user.
+ * @param {User} user The user to whom we want to send a SMS.
+ */
 exports.sendPinCode = async user => {
   const pinCode = user.createPinCode();
   await user.save({ validateBeforeSave: false });
@@ -161,6 +169,10 @@ exports.sendPinCode = async user => {
   });
 };
 
+/**
+ * Function used to generate a random token link that will be sent among an email.
+ * @returns {string[]} The token that will be contained in the link and its hashed version that will be stored in the database.
+ */
 exports.createLinkToken = () => {
   const token = crypto.randomBytes(32).toString('hex');
 

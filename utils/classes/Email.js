@@ -3,10 +3,10 @@
  * @module Email
  */
 const nodemailer = require('nodemailer');
-const { Transporter } = require('nodemailer');
 const ejs = require('ejs');
 const { htmlToText } = require('html-to-text');
 const User = require('../../models/userModel');
+const { Model } = require('mongoose');
 
 /**
  * Email prototype function, used to create email templates and send it to the requested users.
@@ -43,7 +43,7 @@ class Email {
 
   /**
    * Function used to create a new transporter object that will send the email using a specific service.
-   * @returns {Transporter} The new transporter object.
+   * @returns {import('nodemailer').Transporter} The new transporter object.
    * @private
    */
   newTransport() {

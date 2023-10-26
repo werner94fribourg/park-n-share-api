@@ -29,6 +29,9 @@ const validatePassword = value => PASSWORD_VALIDATOR.validate(value);
  * @property {boolean} isConfirmed The confirmation status of the user.
  * @property {string} pinCode The hashed pin code sent to the user when he's trying to connect / register.
  * @property {Date} pinCodeExpires The expiration time of the pin code validity.
+ * @property {boolean} isEmailConfirmed The confirmation status of the email address.
+ * @property {string} confirmEmailToken The hashed email confirmation token, generated in the confirmation email sent to the user.
+ * @property {Date} confirmEmailExpires The expiration time of the confirmation email validity.
  */
 
 /**
@@ -120,33 +123,55 @@ const userSchema = new mongoose.Schema({
 // Creation of the user or modification of the password
 //  - hash and store the new one
 //  - remove the confirm to avoid a passwordConfirm field to be stored in the database
-userSchema.pre('save', async function (next) {
-  if (this.password && this.isModified('password'))
-    this.password = await bcrypt.hash(this.password, 12);
+userSchema.pre(
+  'save',
+  /**
+   * Function used to the check the password field before saving an user and has it if it has been modified or is new.
+   * @param {import('mongoose').PreSaveMiddlewareFunction<User>} next The next middleware function that will be called in the pre saving process.
+   */
+  async function (next) {
+    if (this.password && this.isModified('password'))
+      this.password = await bcrypt.hash(this.password, 12);
 
-  this.passwordConfirm = undefined;
+    this.passwordConfirm = undefined;
 
-  next();
-});
+    next();
+  },
+);
 
 // Password changing
 //  - set a password changing date
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('password') || this.isNew) {
+userSchema.pre(
+  'save',
+  /**
+   * Function used to put a modification date if the user is modifying the password.
+   * @param {import('mongoose').PreSaveMiddlewareFunction} next  The next middleware function that will be called in the pre saving process.
+   */
+  async function (next) {
+    if (!this.isModified('password') || this.isNew) {
+      next();
+      return;
+    }
+
+    this.passwordChangedAt = Date.now() - 1000; // 1 s in past ensures the token was always created after the password has been changed
+
     next();
-    return;
-  }
+  },
+);
 
-  this.passwordChangedAt = Date.now() - 1000; // 1 s in past ensures the token was always created after the password has been changed
-
-  next();
-});
-
-// Password checking when the user tries to connect
+/**
+ * Function used to check the password when the user tries to connect.
+ * @param {string} writtenPassword The non crypted password sent by the user.
+ * @param {string} userPassword The crypted password of the user stored in the database.
+ * @returns {boolean} True if the encryption of the password corresponds to the stored one, false otherwise.
+ */
 userSchema.methods.correctPassword = async (writtenPassword, userPassword) =>
   await bcrypt.compare(writtenPassword, userPassword);
 
-// Create a pin code for 2-step confirmation and hash the pin to be able to store it in the database.
+/**
+ * Function used to create a 6-digit pin code for 2-step authentication and store an encrypted version of it in the user schema in the database.
+ * @returns {string} The encrypted value of the pin code.
+ */
 userSchema.methods.createPinCode = function () {
   const pinCode = Math.floor(Math.random() * 1000000 + 100000);
 
@@ -159,7 +184,10 @@ userSchema.methods.createPinCode = function () {
   return pinCode;
 };
 
-// Create a confirmation token link to be sent to the user when he wants to confirm his e-mail address
+/**
+ * Function used to create a confirmation token that will be set to the confirmation link when the user wants to confirm his e-mail address.
+ * @returns {string} the confirmation email token that will be set in the url.
+ */
 userSchema.methods.createConfirmEmailToken = function () {
   const [confirmEmailToken, hashedConfirmEmailToken] = createLinkToken();
 

@@ -3,7 +3,6 @@
  * @module swaggerSpec
  */
 const { API_ROUTE } = require('./globals');
-const { SwaggerUiOptions } = require('swagger-ui-express');
 const fs = require('fs');
 const swaggerJsDoc = require('swagger-jsdoc');
 const { version } = JSON.parse(fs.readFileSync(`${__dirname}/../package.json`));
@@ -54,7 +53,7 @@ const options = {
 
 /**
  * The swagger specification object.
- * @type {SwaggerUiOptions}
+ * @type {import('swagger-ui-express').SwaggerUiOptions}
  */
 const swaggerSpec = swaggerJsDoc(options);
 

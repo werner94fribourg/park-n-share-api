@@ -72,4 +72,8 @@ exports.TWILIO_CLIENT = TWILIO_CLIENT;
  */
 exports.CONFIRMATION_DELAY = 5 * 60 * 1000; // 5 minutes
 
+/**
+ * Confirmation delay given in ms given to the user to confirm his email address when he requested.
+ * @type {number}
+ */
 exports.EMAIL_CONFIRMATION_DELAY = 10 * 24 * 60 * 60 * 1000; // 10 days
