@@ -9,12 +9,13 @@ const {
   protect,
   sendConfirmationEmail,
   confirmEmail,
+  restrictTo,
+  changePassword,
 } = require('../../controllers/authController');
 const { Router } = require('express');
 const { getAllUsers } = require('../../controllers/userController');
 const { deleteUser } = require('../../controllers/userController');
 const { setRole } = require('../../controllers/userController');
-const { changePassword } = require('../../controllers/userController')
 
 /**
  * The User resource router.
@@ -407,12 +408,87 @@ router.route('/send-confirmation-email').get(protect, sendConfirmationEmail);
  */
 router.route('/confirm-email/:confToken').patch(confirmEmail);
 
+/**
+ * @swagger
+ * /users/change-password:
+ *   patch:
+ *     tags:
+ *       - Authentication
+ *     summary: Route used to change the password when the user is logged in.
+ *     requestBody:
+ *       description: The previous password and the new one to store.
+ *       content:
+ *         application/json:
+ *           schema:
+ *            type: object
+ *            properties:
+ *              passwordCurrent:
+ *                type: string
+ *                description: The actual password of the user
+ *                example: Test@1234
+ *              description:
+ *                type: string
+ *                description: The new password of the user
+ *                example: Test@12345
+ *              passwordConfirm:
+ *                type: string
+ *                description: The confirmation of the new password
+ *                example: Test@12345
+ *     responses:
+ *       200:
+ *         description: The successful pin confirmation status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   description: The status of the response
+ *                   example: success
+ *                 token:
+ *                   type: string
+ *                   description: The login token
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY0MmJmN2I3YWIzOTY2Njc5MmZlNWE2ZiIsImlhdCI6MTY4MDYwNDUxMCwiZXhwIjoxNjgwNjA4MTEwfQ.o7R-5d-mb7mmi3EychbcIl_AfHW6Cuq0SGOo0UG99V4
+ *                 message:
+ *                   type: string
+ *                   description: The success password update message
+ *                   example: Password successfully updated.
+ *       401:
+ *         description: User login problems
+ *         content:
+ *           application/json:
+ *             examples:
+ *               notLoggedInExample:
+ *                 $ref: '#/components/examples/notLoggedInExample'
+ *               accountNotFoundExample:
+ *                 $ref: '#/components/examples/accountNotFoundExample'
+ *               passwordChangedExample:
+ *                 $ref: '#/components/examples/passwordChangedExample'
+ *               InvalidTokenExample:
+ *                 $ref: '#/components/examples/InvalidTokenExample'
+ *               tokenExpiredExample:
+ *                 $ref: '#/components/examples/tokenExpiredExample'
+ *               incorrectCredentialsExample:
+ *                 summary: Wrong current password
+ *                 value:
+ *                   status: fail
+ *                   message: Your current password is wrong.
+ *       500:
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ServerError'
+ */
+router.route('/change-password').patch(protect, changePassword);
+//TODO: create swagger documentation delete user
+router.route('/:id').delete(protect, deleteUser);
+//TODO: create swagger documentation
+router.route('/set-role').patch(protect, restrictTo('admin'), setRole);
 
-
-
-// ToDo: setup swagger for the following routes
-router.route('/changePassword').patch(changePassword);
-router.route('/:id').delete(deleteUser);
-router.route('/admin/setRole').patch(setRole);
+//TODO: change forgot-password and reset-password/:resetToken
+/*router.route('/forgot-password', forgotPassword);
+router.route('/reset-password/:resetToken', resetToken);*/
 
 module.exports = router;

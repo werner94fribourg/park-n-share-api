@@ -101,7 +101,8 @@ app.route('/docs.json').get((_, res) => {
 
 app.use('/api/docs', swaggerUI.serve, swaggerUI.setup(swaggerSpec));
 
-/* TODO: fix redirection to non existing routes in the api
+/*
+TODO: fix redirection to non existing routes in the api
 app.use('/api/docs/*', (req, _, next) => {
   next(new AppError(`Cannot find ${req.originalUrl} on this server!`, 404));
 });

@@ -3,6 +3,7 @@
  * @module userController
  */
 const User = require('../models/userModel');
+const AppError = require('../utils/classes/AppError');
 const { catchAsync } = require('../utils/utils');
 
 exports.getAllUsers = catchAsync(
@@ -22,43 +23,29 @@ exports.getAllUsers = catchAsync(
   },
 );
 
-exports.changePassword = catchAsync(async (req, res, next) => {
-  // get the user from the database
-  const user = await User.findById(req.user._id).select('+password');
-
-  // check if the posted current password is correct
-  if (!(await user.password.correctPassword(req.body.password, user.password))) {
-    return res.status(403).json({ message: "Wrong Password input, please enter your previous password" });
-  }
-
-  // update the password fields
-  user.password = req.body.password;
-  user.passwordConfirm = req.body.passwordConfirm;
-  user.passwordChangedAt = Date.now();
-
-  await user.save();
-
-  // output to client
-  res.status(200).json({ status: 'success', message: 'Password updated successfully' });
-});
-
 exports.deleteUser = catchAsync(async (req, res, next) => {
-  const { user } = req;
-  const { id } = user;
+  //1) Get the id of the user we want to delete
+  const {
+    params: { id },
+  } = req;
 
-  // update the user by setting isDeleted to true and recording the deletion time
-  const updatedUser = await User.findByIdAndUpdate(id, {
-    isDeleted: true,
-    deletedAt: Date.now(),
-  });
+  //2) Retrieve him from the database
+  const user = await User.findById(id);
 
-  // Check if the user was not found
-  if (!updatedUser) {
-    return res.status(404).json({ message: "User not found" });
+  //3) check if the user wasn't found
+  if (!user) {
+    next(new AppError("The requested user doesn't exist or was deleted.", 404));
+    return;
   }
 
-  // If the user was successfully updated, you can send a success response
-  res.status(200).json({ status: "success", message: "User account has been deleted", data: { user: updatedUser } });
+  // delete the user
+  await User.findByIdAndDelete(id);
+
+  // If the user was successfully deleted, you can send a success response
+  // N.B. : it is a practice to not send any content back
+  res.status(204).json({
+    status: 'success',
+  });
 });
 
 exports.setRole = catchAsync(async (req, res, next) => {
@@ -70,16 +57,16 @@ exports.setRole = catchAsync(async (req, res, next) => {
 
   // 1) Create Error if the requested user is an admin
   if (user.role === 'admin') {
-    return res.status(403).json("You can't update the role of an admin user.");
+    next(new AppError("You can't update the role of an admin user.", 403));
   }
   // 2) Update the user
   const updatedUser = await User.findByIdAndUpdate(
-      user.id,
-      { role },
-      {
-        new: true,
-        runValidators: true,
-      }
+    user.id,
+    { role },
+    {
+      new: true,
+      runValidators: true,
+    },
   );
 
   // 3) Send the updated User

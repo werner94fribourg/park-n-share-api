@@ -214,7 +214,16 @@ exports.protect = catchAsync(
       return;
     }
 
-    // TODO:4) Check if the user has changed password after the token was issued
+    // 4) Check if the user has changed password after the token was issued
+    if (currentUser.changedPasswordAfter(decoded.iat)) {
+      next(
+        new AppError(
+          'User recently changed password ! Please log in again.',
+          401,
+        ),
+      );
+      return;
+    }
 
     //5) Access the logged user to be used in the next middleware function if everything is fine
     req.user = currentUser;
@@ -222,6 +231,22 @@ exports.protect = catchAsync(
     next();
   },
 );
+
+exports.restrictTo =
+  (...roles) =>
+  (req, _res, next) => {
+    const {
+      user: { role },
+    } = req;
+    if (!roles.includes(role)) {
+      next(
+        new AppError("You don't have permission to perform this action.", 403),
+      );
+      return;
+    }
+
+    next();
+  };
 
 exports.sendConfirmationEmail = catchAsync(
   /**
@@ -310,3 +335,35 @@ exports.confirmEmail = catchAsync(
     });
   },
 );
+
+exports.changePassword = catchAsync(async (req, res, next) => {
+  // get the user from the database
+  const user = await User.findById(req.user._id).select('+password');
+
+  // check if the posted current password is correct
+  if (
+    !(await user.password.correctPassword(
+      req.body.passwordCurrent,
+      user.password,
+    ))
+  ) {
+    next(new AppError('Your current password is wrong.', 401));
+    return;
+  }
+
+  // update the password fields
+  user.password = req.body.password;
+  user.passwordConfirm = req.body.passwordConfirm;
+
+  await user.save();
+
+  // authenticate the client again
+  const { resObject, cookieOptions } = createSendToken(req, user._id);
+
+  resObject['message'] = 'Password successfully updated.';
+
+  res.cookie('jwt', resObject.token, cookieOptions);
+
+  // send back the response
+  res.status(200).json(resObject);
+});
