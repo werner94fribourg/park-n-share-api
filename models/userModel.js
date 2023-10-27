@@ -118,6 +118,14 @@ const userSchema = new mongoose.Schema({
     type: Date,
     select: false,
   },
+  isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+  isDeletedAt: {
+    type: Date,
+    select: false,
+  },
 });
 
 // Creation of the user or modification of the password

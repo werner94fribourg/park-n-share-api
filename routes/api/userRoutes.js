@@ -12,6 +12,9 @@ const {
 } = require('../../controllers/authController');
 const { Router } = require('express');
 const { getAllUsers } = require('../../controllers/userController');
+const { deleteUser } = require('../../controllers/userController');
+const { setRole } = require('../../controllers/userController');
+const { changePassword } = require('../../controllers/userController')
 
 /**
  * The User resource router.
@@ -403,5 +406,13 @@ router.route('/send-confirmation-email').get(protect, sendConfirmationEmail);
  *               $ref: '#/components/schemas/ServerError'
  */
 router.route('/confirm-email/:confToken').patch(confirmEmail);
+
+
+
+
+// ToDo: setup swagger for the following routes
+router.route('/changePassword').patch(changePassword);
+router.route('/:id').delete(deleteUser);
+router.route('/admin/setRole').patch(setRole);
 
 module.exports = router;
