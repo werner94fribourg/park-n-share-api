@@ -367,3 +367,63 @@ exports.changePassword = catchAsync(async (req, res, next) => {
   // send back the response
   res.status(200).json(resObject);
 });
+
+exports.isResetLinkValid = catchAsync(async (req, res, next) => {
+  const {
+    params: { resetToken },
+  } = req;
+
+  const passwordResetToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+
+  const user = await User.findOne({
+    passwordResetToken,
+    passwordResetExpires: { $gt: Date.now() },
+  });
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      valid: user,
+    },
+  });
+});
+
+
+exports.forgotPassword = catchAsync(async (req, res, next) => {
+  // get the user from the database
+  const users = await User.find({});
+  const userEmail = req.body.email;
+
+  // query all users with matching userEmail
+  const user = users.find(user => user.email === userEmail);
+
+  // check if the posted current password is correct
+  if (!user) {
+    // No user found with the specified email
+    next(new AppError('User with the specified email not found.', 404));
+    return;
+  }
+  // ToDo: Fix from here on
+  const resetToken = user.createPasswordResetToken();
+
+  await user.save({ validateBeforeSave: false });
+  try {
+    const url = `${FRONT_END_URL}/reset-password/${resetToken}`;
+
+    await new Email(user, url).sendPasswordReset();
+
+    res
+        .status(200)
+        .json({ status: 'success', message: 'Reset link sent to email!' });
+  } catch (err) {
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+    next(
+        new AppError('There was an error sending the email. Try Again !', 500)
+    );
+  }
+});

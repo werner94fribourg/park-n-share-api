@@ -92,6 +92,14 @@ const userSchema = new mongoose.Schema({
     type: Date,
     select: false,
   },
+  passwordResetToken: {
+    type: String,
+    select: false,
+  },
+  passwordResetExpires: {
+    type: Date,
+    select: false,
+  },
   isConfirmed: {
     type: Boolean,
     default: false,
@@ -205,6 +213,16 @@ userSchema.methods.createConfirmEmailToken = function () {
 
   return confirmEmailToken;
 };
+
+userSchema.methods.createPasswordResetToken = function () {
+  const [resetToken, hashedResetToken] = createLinkToken();
+  this.passwordResetToken = hashedResetToken;
+
+  this.passwordResetExpires = Date.now() + 24 * 60 * 60 * 1000;
+
+  return resetToken;
+};
+
 
 /**
  * The User model object generated from mongoose.
