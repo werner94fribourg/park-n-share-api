@@ -23,52 +23,85 @@ exports.getAllUsers = catchAsync(
   },
 );
 
-exports.deleteUser = catchAsync(async (req, res, next) => {
-  //1) Get the id of the user we want to delete
-  const {
-    params: { id },
-  } = req;
+exports.deleteUser = catchAsync(
+  /**
+   * Function used to delete an existing user from the platform.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, res, next) => {
+    //1) Get the id of the user we want to delete
+    const {
+      params: { id },
+    } = req;
 
-  //2) Retrieve him from the database
-  const user = await User.findById(id);
+    //2) Retrieve him from the database
+    const user = await User.findById(id);
 
-  //3) check if the user wasn't found
-  if (!user) {
-    next(new AppError("The requested user doesn't exist or was deleted.", 404));
-    return;
-  }
+    //3) check if the user wasn't found
+    if (!user) {
+      next(
+        new AppError("The requested user doesn't exist or was deleted.", 404),
+      );
+      return;
+    }
 
-  // delete the user
-  await User.findByIdAndDelete(id);
+    // 4) check if the user is an admin
+    if (user.role === 'admin') {
+      next(new AppError("You can't delete an admin user.", 403));
+      return;
+    }
 
-  // If the user was successfully deleted, you can send a success response
-  // N.B. : it is a practice to not send any content back
-  res.status(204).json({
-    status: 'success',
-  });
-});
+    // delete the user
+    await User.findByIdAndDelete(id);
 
-exports.setRole = catchAsync(async (req, res, next) => {
-  const {
-    params: { id },
-    body: { role },
-  } = req;
-  const user = await User.findById(id);
+    // If the user was successfully deleted, you can send a success response
+    // N.B. : it is a practice to not send any content back
+    res.status(204).json({
+      status: 'success',
+    });
+  },
+);
 
-  // 1) Create Error if the requested user is an admin
-  if (user.role === 'admin') {
-    next(new AppError("You can't update the role of an admin user.", 403));
-  }
-  // 2) Update the user
-  const updatedUser = await User.findByIdAndUpdate(
-    user.id,
-    { role },
-    {
-      new: true,
-      runValidators: true,
-    },
-  );
+exports.setRole = catchAsync(
+  /**
+   * Function used to change the role of an existing user.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, res, next) => {
+    const {
+      params: { id },
+      body: { role },
+    } = req;
+    const user = await User.findById(id);
 
-  // 3) Send the updated User
-  res.status(200).json({ status: 'success', data: { user: updatedUser } });
-});
+    // 1) check if the user wasn't found
+    if (!user) {
+      next(
+        new AppError("The requested user doesn't exist or was deleted.", 404),
+      );
+      return;
+    }
+
+    // 2) Create Error if the requested user is an admin
+    if (user.role === 'admin') {
+      next(new AppError("You can't update the role of an admin user.", 403));
+    }
+
+    // 3) Update the user
+    const updatedUser = await User.findByIdAndUpdate(
+      user.id,
+      { role },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+
+    // 3) Send the updated User
+    res.status(200).json({ status: 'success', data: { user: updatedUser } });
+  },
+);

@@ -26,12 +26,16 @@ const validatePassword = value => PASSWORD_VALIDATOR.validate(value);
  * @property {string} passwordConfirm The password confirmation of the user, which will not be stored in the database.
  * @property {string} role The role of the user.
  * @property {Date} passwordChangedAt The last moment where the user changed his password.
+ * @property {string} passwordResetToken The hashed email reset token, generated in the reset email sent to the user when he has forgotten his password.
+ * @property {Date} passwordResetExpires The expiration time of the reset email validity.
  * @property {boolean} isConfirmed The confirmation status of the user.
  * @property {string} pinCode The hashed pin code sent to the user when he's trying to connect / register.
  * @property {Date} pinCodeExpires The expiration time of the pin code validity.
  * @property {boolean} isEmailConfirmed The confirmation status of the email address.
  * @property {string} confirmEmailToken The hashed email confirmation token, generated in the confirmation email sent to the user.
  * @property {Date} confirmEmailExpires The expiration time of the confirmation email validity.
+ * @property {boolean} isDeactivated The activation status of the account.
+ * @property {Date} isDeactivatedAt The deactivation date of the account.
  */
 
 /**
@@ -126,11 +130,11 @@ const userSchema = new mongoose.Schema({
     type: Date,
     select: false,
   },
-  isDeleted: {
+  isDeactivated: {
     type: Boolean,
     default: false,
   },
-  isDeletedAt: {
+  isDeactivatedAt: {
     type: Date,
     select: false,
   },
@@ -202,7 +206,7 @@ userSchema.methods.createPinCode = function () {
 
 /**
  * Function used to create a confirmation token that will be set to the confirmation link when the user wants to confirm his e-mail address.
- * @returns {string} the confirmation email token that will be set in the url.
+ * @returns {string} The confirmation email token that will be set in the url.
  */
 userSchema.methods.createConfirmEmailToken = function () {
   const [confirmEmailToken, hashedConfirmEmailToken] = createLinkToken();
@@ -214,6 +218,10 @@ userSchema.methods.createConfirmEmailToken = function () {
   return confirmEmailToken;
 };
 
+/**
+ * Function used to create a reset token that will be set to the reset password link when the user wants to confirm his e-mail address.
+ * @returns {string} the reset email token that will be set in the url.
+ */
 userSchema.methods.createPasswordResetToken = function () {
   const [resetToken, hashedResetToken] = createLinkToken();
   this.passwordResetToken = hashedResetToken;
@@ -222,7 +230,6 @@ userSchema.methods.createPasswordResetToken = function () {
 
   return resetToken;
 };
-
 
 /**
  * The User model object generated from mongoose.

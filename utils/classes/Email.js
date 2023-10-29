@@ -6,7 +6,6 @@ const nodemailer = require('nodemailer');
 const ejs = require('ejs');
 const { htmlToText } = require('html-to-text');
 const User = require('../../models/userModel');
-const { Model } = require('mongoose');
 
 /**
  * Email prototype function, used to create email templates and send it to the requested users.
@@ -113,12 +112,15 @@ class Email {
     await this.send('confirmEmail', 'Please confirm your email address.');
   }
 
-    async sendPasswordReset() {
-      await this.send(
-          'passwordReset',
-          'Your password reset token (valid for only 10 minutes)'
-      );
-    }
+  /**
+   * Async function used to send a forgot password link to the user if he request it such that he can change his password.
+   */
+  async sendForgotPassword() {
+    await this.send(
+      'forgotPassword',
+      'Your password reset token (valid for only 10 minutes)',
+    );
+  }
 }
 
 module.exports = Email;

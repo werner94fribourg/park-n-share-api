@@ -118,7 +118,8 @@ exports.signin = catchAsync(
    * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
    * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
    * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
-   */ async (req, res, next) => {
+   */
+  async (req, res, next) => {
     const {
       body: { email, password },
     } = req;
@@ -218,7 +219,7 @@ exports.protect = catchAsync(
     if (currentUser.changedPasswordAfter(decoded.iat)) {
       next(
         new AppError(
-          'User recently changed password ! Please log in again.',
+          'User recently changed password! Please log in again.',
           401,
         ),
       );
@@ -233,20 +234,35 @@ exports.protect = catchAsync(
 );
 
 exports.restrictTo =
-  (...roles) =>
-  (req, _res, next) => {
-    const {
-      user: { role },
-    } = req;
-    if (!roles.includes(role)) {
-      next(
-        new AppError("You don't have permission to perform this action.", 403),
-      );
-      return;
-    }
+  /**
+   * Function used to restrict the access to a route to users if they aren't from a specific one.
+   * @param  {...any} roles The list of roles for which we want to restrict the access of a route.
+   * @returns {import('express').RequestHandler} A request handler function that will check that the user has one of the role specified in the list.
+   */
 
-    next();
-  };
+
+    (...roles) =>
+    /**
+     * Function that will check that the user have of the specified roles to access a route and deny access if it isn't the case.
+     * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+     * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+     */
+    (req, _, next) => {
+      const {
+        user: { role },
+      } = req;
+      if (!roles.includes(role)) {
+        next(
+          new AppError(
+            "You don't have permission to perform this action.",
+            403,
+          ),
+        );
+        return;
+      }
+
+      next();
+    };
 
 exports.sendConfirmationEmail = catchAsync(
   /**
@@ -336,131 +352,166 @@ exports.confirmEmail = catchAsync(
   },
 );
 
-exports.changePassword = catchAsync(async (req, res, next) => {
-  // get the user from the database
-  const user = await User.findById(req.user._id).select('+password');
+exports.changePassword = catchAsync(
+  /**
+   * Function used to change the password of the connected user.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, res, next) => {
+    // get the user from the database
+    const user = await User.findById(req.user._id).select('+password');
 
-  // check if the posted current password is correct
-  if (
-    !(await user.password.correctPassword(
-      req.body.passwordCurrent,
-      user.password,
-    ))
-  ) {
-    next(new AppError('Your current password is wrong.', 401));
-    return;
-  }
+    // check if the posted current password is correct
+    if (
+      !(await user.password.correctPassword(
+        req.body.passwordCurrent,
+        user.password,
+      ))
+    ) {
+      next(new AppError('Your current password is wrong.', 401));
+      return;
+    }
 
-  // update the password fields
-  user.password = req.body.password;
-  user.passwordConfirm = req.body.passwordConfirm;
+    // update the password fields
+    user.password = req.body.password;
+    user.passwordConfirm = req.body.passwordConfirm;
 
-  await user.save();
+    await user.save();
 
-  // authenticate the client again
-  const { resObject, cookieOptions } = createSendToken(req, user._id);
+    // authenticate the client again
+    const { resObject, cookieOptions } = createSendToken(req, user._id);
 
-  resObject['message'] = 'Password successfully updated.';
+    resObject['message'] = 'Password successfully updated.';
 
-  res.cookie('jwt', resObject.token, cookieOptions);
+    res.cookie('jwt', resObject.token, cookieOptions);
 
-  // send back the response
-  res.status(200).json(resObject);
-});
+    // send back the response
+    res.status(200).json(resObject);
+  },
+);
 
-exports.resetPassword = catchAsync(async (req, res, next) => {
-  const {
-    params: { resetToken },
-  } = req;
+exports.forgotPassword = catchAsync(
+  /**
+   * Function used to send a forgot password request if the user doesn't remember his one.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, res, next) => {
+    // get the email from user
+    const userEmail = req.body.email;
 
-  const passwordResetToken = crypto
-      .createHash('sha256')
-      .update(resetToken)
-      .digest('hex');
+    // query all users with matching userEmail
+    const user = await User.findOne({ email: userEmail });
 
-  const user = await User.findOne({
-    passwordResetToken,
-    passwordResetExpires: { $gt: Date.now() },
-  });
+    // check if the posted current password is correct
+    if (!user) {
+      // No user found with the specified email
+      // Simulate that the email request was sent to not give clues in the case where there is an attack
+      res.status(200).json({
+        status: 'success',
+        message: 'Reset password link sent to your email!',
+      });
+      return;
+    }
 
-  if (!user) {
-    next(new AppError('Invalid Link.', 401));
-    return;
-  }
+    // Generate email forgotPassword Reset Token
+    const resetToken = user.createPasswordResetToken();
 
-  // update the password fields
-  user.password = req.body.password;
-  user.passwordConfirm = req.body.passwordConfirm;
-
-  await user.save();
-
-  // authenticate the client again
-  const { resObject, cookieOptions } = createSendToken(req, user._id);
-
-  resObject['message'] = 'Password successfully updated.';
-
-  res.cookie('jwt', resObject.token, cookieOptions);
-
-  // send back the response
-  res.status(200).json(resObject);
-});
-
-exports.isResetLinkValid = catchAsync(async (req, res, next) => {
-  const {
-    params: { resetToken },
-  } = req;
-
-  const passwordResetToken = crypto
-      .createHash('sha256')
-      .update(resetToken)
-      .digest('hex');
-
-  const user = await User.findOne({
-    passwordResetToken,
-    passwordResetExpires: { $gt: Date.now() },
-  });
-
-  res.status(200).json({
-    status: 'success',
-    data: {
-      valid: user,
-    },
-  });
-});
-
-exports.forgotPassword = catchAsync(async (req, res, next) => {
-
-  // get the email from user
-  const userEmail = req.body.email;
-
-  // query all users with matching userEmail
-  const user = await User.findOne({ email: userEmail });
-
-  // check if the posted current password is correct
-  if (!user) {
-    // No user found with the specified email
-    next(new AppError('User with the specified email not found.', 404));
-    return;
-  }
-
-  // ToDo: Fix from here on
-  const resetToken = user.createPasswordResetToken();
-
-  await user.save({ validateBeforeSave: false });
-  try {
-    const url = `${FRONT_END_URL}/reset-password/${resetToken}`;
-
-    await new Email(user, url).sendPasswordReset();
-
-    res
-        .status(200)
-        .json({ status: 'success', message: 'Reset link sent to email!' });
-  } catch (err) {
-    user.passwordResetToken = undefined;
-    user.passwordResetExpires = undefined;
     await user.save({ validateBeforeSave: false });
-    next(
-        new AppError('There was an error sending the email. Try Again !', 500)
-    );
-  }
-});
+    try {
+      const url = `${FRONT_END_URL}/reset-password/${resetToken}`;
+
+      await new Email(user, url).sendForgotPassword();
+
+      res.status(200).json({
+        status: 'success',
+        message: 'Reset password link sent to your email!',
+      });
+    } catch (err) {
+      user.passwordResetToken = undefined;
+      user.passwordResetExpires = undefined;
+      await user.save({ validateBeforeSave: false });
+      next(
+        new AppError('There was an error sending the email. Try Again!', 500),
+      );
+    }
+  },
+);
+
+exports.isResetLinkValid = catchAsync(
+  /**
+   * Function used to check if a reset password link is a valid one.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+   */
+  async (req, res) => {
+    const {
+      params: { resetToken },
+    } = req;
+
+    const passwordResetToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+
+    const user = await User.findOne({
+      passwordResetToken,
+      passwordResetExpires: { $gt: Date.now() },
+    });
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        valid: user ? true : false,
+      },
+    });
+  },
+);
+
+exports.resetPassword = catchAsync(
+  /**
+   * Function used to reset the password of the user if he has received a reset password link to his email address.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, res, next) => {
+    const {
+      params: { resetToken },
+    } = req;
+
+    const passwordResetToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+
+    const user = await User.findOne({
+      passwordResetToken,
+      passwordResetExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      next(new AppError('The link is invalid or has expired.', 400));
+      return;
+    }
+
+    // update the password fields
+    user.password = req.body.password;
+    user.passwordConfirm = req.body.passwordConfirm;
+
+    await user.save();
+
+    // authenticate the client again
+    const { resObject, cookieOptions } = createSendToken(req, user._id);
+
+    resObject['message'] = 'Password successfully changed!';
+
+    res.cookie('jwt', resObject.token, cookieOptions);
+
+    // send back the response
+    res.status(200).json(resObject);
+  },
+);

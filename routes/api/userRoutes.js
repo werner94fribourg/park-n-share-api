@@ -3,23 +3,23 @@
  * @module userRoutes
  */
 const {
-    signin,
-    signup,
-    confirmPin,
-    protect,
-    sendConfirmationEmail,
-    confirmEmail,
-    restrictTo,
-    changePassword,
-    forgotPassword,
-    isResetLinkValid,
-    resetPassword,
+  signin,
+  signup,
+  confirmPin,
+  protect,
+  sendConfirmationEmail,
+  confirmEmail,
+  restrictTo,
+  changePassword,
+  forgotPassword,
+  isResetLinkValid,
+  resetPassword,
 } = require('../../controllers/authController');
-const {Router} = require('express');
+const { Router } = require('express');
 const {
-    getAllUsers,
-    deleteUser,
-    setRole
+  getAllUsers,
+  deleteUser,
+  setRole,
 } = require('../../controllers/userController');
 
 /**
@@ -50,7 +50,7 @@ const router = Router();
  *         phone:
  *           type: string
  *           description: The phone number of the user
- *           example: +41888888888
+ *           example: "+41888888888"
  *         role:
  *           type: string
  *           description: The role of the user
@@ -75,7 +75,7 @@ const router = Router();
  *       summary: Password changed after the token was issued
  *       value:
  *         status: fail
- *         message: User recently changed password ! Please log in again.
+ *         message: User recently changed password! Please log in again.
  *     InvalidTokenExample:
  *       summary: The sent token is not valid
  *       value:
@@ -91,7 +91,13 @@ const router = Router();
  *       value:
  *         status: error
  *         message: Something went wrong. Try Again!
+ *     RolePermissionExample:
+ *         summary: Forbidden access due to role
+ *         value:
+ *           status: fail
+ *           message: You don't have permission to perform this action.
  */
+
 /**
  * @swagger
  * components:
@@ -107,6 +113,17 @@ const router = Router();
  *           type: string
  *           description: The error message
  *           example: Something went wrong. Try Again!
+ *     RolePermissionError:
+ *       type: object
+ *       properties:
+ *         status:
+ *           type: string
+ *           description: The status of the response
+ *           example: fail
+ *         message:
+ *           type: string
+ *           description: The error message
+ *           example: You don't have permission to perform this action.
  */
 
 /**
@@ -132,7 +149,7 @@ const router = Router();
  *   get:
  *     tags:
  *       - User
- *     summary: Route used to get all the users (students and teachers) in the application
+ *     summary: Route used to get all the users
  *     responses:
  *       200:
  *         description: List of all users
@@ -485,17 +502,10 @@ router.route('/confirm-email/:confToken').patch(confirmEmail);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ServerError'
+ *     security:
+ *       - bearerAuth: []
  */
 router.route('/change-password').patch(protect, changePassword);
-
-
-//TODO: create swagger documentation delete user
-router.route('/:id').delete(protect, deleteUser);
-
-
-//TODO: create swagger documentation
-router.route('/set-role').patch(protect, restrictTo('admin'), setRole);
-
 
 /**
  * @swagger
@@ -530,7 +540,7 @@ router.route('/set-role').patch(protect, restrictTo('admin'), setRole);
  *                   example: success
  *                 message:
  *                   type: string
- *                   example: Reset link sent to email!
+ *                   example: Reset password link sent to your email!
  *       500:
  *         description: Internal server error
  *         content:
@@ -540,14 +550,13 @@ router.route('/set-role').patch(protect, restrictTo('admin'), setRole);
  *                 summary: E-mail sending error
  *                 value:
  *                   status: error
- *                   message: There was an error sending the email. Try Again !'
+ *                   message: There was an error sending the email. Try Again!'
  *               internalServerErrorExample:
  *                 summary: Generic internal server error
  *                 value:
  *                   status: error
- *                   message: Something went wrong. Try Again !
+ *                   message: Something went wrong. Try Again!
  */
-//TODO: change forgot-password and reset-password/:resetToken
 router.route('/forgot-password').post(forgotPassword);
 
 /**
@@ -556,7 +565,7 @@ router.route('/forgot-password').post(forgotPassword);
  *   get:
  *     tags:
  *       - Authentication
- *     summary: Route used to get the validity of a reset password token link
+ *     summary: Route used to check the validity of a reset password link
  *     parameters:
  *       - name: resetToken
  *         in: path
@@ -566,7 +575,7 @@ router.route('/forgot-password').post(forgotPassword);
  *           type: string
  *     responses:
  *       200:
- *         description: The validity of the reset token link
+ *         description: The validity of the reset link
  *         content:
  *           application/json:
  *             schema:
@@ -582,20 +591,11 @@ router.route('/forgot-password').post(forgotPassword);
  *                       type: boolean
  *                       example: false
  *       500:
- *         description: Internal server error
+ *         description: Internal Server Error
  *         content:
  *           application/json:
- *             examples:
- *               emailSendingExample:
- *                 summary: E-mail sending error
- *                 value:
- *                   status: error
- *                   message: There was an error sending the confirmation email. Please contact us at admin-learn@home.com!
- *               internalServerErrorExample:
- *                 summary: Generic internal server error
- *                 value:
- *                   status: error
- *                   message: Something went wrong. Try Again !
+ *             schema:
+ *               $ref: '#/components/schemas/ServerError'
  *   post:
  *     tags:
  *       - Authentication
@@ -627,7 +627,7 @@ router.route('/forgot-password').post(forgotPassword);
  *                example: Test@1234
  *     responses:
  *       200:
- *         description: Successful reset
+ *         description: Successful password reset
  *         content:
  *           application/json:
  *             schema:
@@ -641,9 +641,9 @@ router.route('/forgot-password').post(forgotPassword);
  *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY0MmJmN2I3YWIzOTY2Njc5MmZlNWE2ZiIsImlhdCI6MTY4MDYwNDUxMCwiZXhwIjoxNjgwNjA4MTEwfQ.o7R-5d-mb7mmi3EychbcIl_AfHW6Cuq0SGOo0UG99V4
  *                 message:
  *                   type: string
- *                   example: Password successfully changed !
+ *                   example: Password successfully changed!
  *       400:
- *         description: Invalid reset token (confirmation time expired or inexistant token)
+ *         description: Invalid reset link (confirmation time expired or inexistant token)
  *         content:
  *           application/json:
  *             schema:
@@ -654,7 +654,7 @@ router.route('/forgot-password').post(forgotPassword);
  *                   example: fail
  *                 message:
  *                   type: string
- *                   example: Token is invalid or has expired.
+ *                   example: The link is invalid or has expired.
  *       500:
  *         description: Internal Server Error
  *         content:
@@ -663,8 +663,115 @@ router.route('/forgot-password').post(forgotPassword);
  *               $ref: '#/components/schemas/ServerError'
  */
 router
-    .route('/reset-password/:resetToken')
-    .get(isResetLinkValid)
-    .post(resetPassword);
+  .route('/reset-password/:resetToken')
+  .get(isResetLinkValid)
+  .post(resetPassword);
+
+/**
+ * @swagger
+ * /users/{:id}:
+ *   delete:
+ *     tags:
+ *       - User
+ *     summary: Route used to delete an user from the platform
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         description: The id of the user we want to delete
+ *         required: true
+ *         type: string
+ *     responses:
+ *       204:
+ *         description: Successful deletion
+ *       403:
+ *         description: Role related errors
+ *         content:
+ *           application/json:
+ *             examples:
+ *               RolePermissionExample:
+ *                 summary: Forbidden access due to role
+ *                 $ref: '#/components/examples/RolePermissionExample'
+ *               AdminDeletionExample:
+ *                 summary: Admin user deletion attempt
+ *                 value:
+ *                   status: fail
+ *                   message: You can't delete an admin user.
+ *       404:
+ *         description: Non existing user deletion attempt
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: fail
+ *                 message:
+ *                   type: string
+ *                   example: The requested user doesn't exist or was deleted.
+ *       500:
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ServerError'
+ *     security:
+ *       - bearerAuth: []
+ */
+router.route('/:id').delete(protect, restrictTo('admin'), deleteUser);
+
+/**
+ * @swagger
+ * /users/:id/role:
+ *   patch:
+ *     tags:
+ *       - User
+ *     summary: Route used to change the role of an existing user (accessible to admin only)
+ *     responses:
+ *       200:
+ *         description: Successful user role change
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *       403:
+ *         description: Role related errors
+ *         content:
+ *           application/json:
+ *             examples:
+ *               RolePermissionExample:
+ *                 summary: Forbidden access due to role
+ *                 $ref: '#/components/examples/RolePermissionExample'
+ *               AdminDeletionExample:
+ *                 summary: Admin user role changing attempt
+ *                 value:
+ *                   status: fail
+ *                   message: You can't update the role of an admin user.
+ *       404:
+ *         description: Non existing user deletion attempt
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: fail
+ *                 message:
+ *                   type: string
+ *                   example: The requested user doesn't exist or was deleted.
+ *     security:
+ *       - bearerAuth: []
+ */
+router.route('/:id/role').patch(protect, restrictTo('admin'), setRole);
 
 module.exports = router;
