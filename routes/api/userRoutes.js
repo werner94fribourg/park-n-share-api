@@ -3,19 +3,23 @@
  * @module userRoutes
  */
 const {
-  signin,
-  signup,
-  confirmPin,
-  protect,
-  sendConfirmationEmail,
-  confirmEmail,
-  restrictTo,
-  changePassword,
+    signin,
+    signup,
+    confirmPin,
+    protect,
+    sendConfirmationEmail,
+    confirmEmail,
+    restrictTo,
+    changePassword,
+    forgotPassword,
+    isResetLinkValid,
 } = require('../../controllers/authController');
-const { Router } = require('express');
-const { getAllUsers } = require('../../controllers/userController');
-const { deleteUser } = require('../../controllers/userController');
-const { setRole } = require('../../controllers/userController');
+const {Router} = require('express');
+const {
+    getAllUsers,
+    deleteUser,
+    setRole
+} = require('../../controllers/userController');
 
 /**
  * The User resource router.
@@ -487,8 +491,175 @@ router.route('/:id').delete(protect, deleteUser);
 //TODO: create swagger documentation
 router.route('/set-role').patch(protect, restrictTo('admin'), setRole);
 
+
+/**
+ * @swagger
+ * /users/forgot-password:
+ *   post:
+ *     tags:
+ *       - Authentication
+ *     summary: Route used to send a forgot password request
+ *     requestBody:
+ *       description: The email of the user
+ *       content:
+ *         application/json:
+ *           schema:
+ *            type: object
+ *            required:
+ *              - email
+ *            properties:
+ *              email:
+ *                type: string
+ *                description: The user's email
+ *                example: test@example.com
+ *     responses:
+ *       200:
+ *         description: Successful change link sent to email
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ *                   example: Reset link sent to email!
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             examples:
+ *               emailSendingExample:
+ *                 summary: E-mail sending error
+ *                 value:
+ *                   status: error
+ *                   message: There was an error sending the email. Try Again !'
+ *               internalServerErrorExample:
+ *                 summary: Generic internal server error
+ *                 value:
+ *                   status: error
+ *                   message: Something went wrong. Try Again !
+ */
 //TODO: change forgot-password and reset-password/:resetToken
-/*router.route('/forgot-password', forgotPassword);
-router.route('/reset-password/:resetToken', resetToken);*/
+router.route('/forgot-password').post(forgotPassword);
+
+/**
+ * @swagger
+ * /users/reset-password/{resetToken}:
+ *   get:
+ *     tags:
+ *       - Authentication
+ *     summary: Route used to get the validity of a reset password token link
+ *     parameters:
+ *       - name: resetToken
+ *         in: path
+ *         description: 'The reset token used to reset the password of an user (accessible via a link sent to the user by e-mail)'
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: The validity of the reset token link
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     valid:
+ *                       type: boolean
+ *                       example: false
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             examples:
+ *               emailSendingExample:
+ *                 summary: E-mail sending error
+ *                 value:
+ *                   status: error
+ *                   message: There was an error sending the confirmation email. Please contact us at admin-learn@home.com!
+ *               internalServerErrorExample:
+ *                 summary: Generic internal server error
+ *                 value:
+ *                   status: error
+ *                   message: Something went wrong. Try Again !
+ *   post:
+ *     tags:
+ *       - Authentication
+ *     summary: Route used to reset a forgotten password
+ *     parameters:
+ *       - name: resetToken
+ *         in: path
+ *         description: 'The reset token used to reset the password of an user (accessible via a link sent to the user by e-mail)'
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       description: The new password of the user
+ *       content:
+ *         application/json:
+ *           schema:
+ *            type: object
+ *            required:
+ *              - password
+ *              - passwordConfirm
+ *            properties:
+ *              password:
+ *                type: string
+ *                description: The user's new password
+ *                example: Test@1234
+ *              passwordConfirm:
+ *                type: string
+ *                description: The user's new password confirmation
+ *                example: Test@1234
+ *     responses:
+ *       200:
+ *         description: Successful reset
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 token:
+ *                   type: string
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY0MmJmN2I3YWIzOTY2Njc5MmZlNWE2ZiIsImlhdCI6MTY4MDYwNDUxMCwiZXhwIjoxNjgwNjA4MTEwfQ.o7R-5d-mb7mmi3EychbcIl_AfHW6Cuq0SGOo0UG99V4
+ *                 message:
+ *                   type: string
+ *                   example: Password successfully changed !
+ *       400:
+ *         description: Invalid reset token (confirmation time expired or inexistant token)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: fail
+ *                 message:
+ *                   type: string
+ *                   example: Token is invalid or has expired.
+ *       500:
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ServerError'
+ */
+router
+    .route('/reset-password/:resetToken')
+    .get(isResetLinkValid)
+    .post(changePassword);
 
 module.exports = router;

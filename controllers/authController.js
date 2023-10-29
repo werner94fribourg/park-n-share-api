@@ -391,14 +391,13 @@ exports.isResetLinkValid = catchAsync(async (req, res, next) => {
   });
 });
 
-
 exports.forgotPassword = catchAsync(async (req, res, next) => {
-  // get the user from the database
-  const users = await User.find({});
+
+  // get the email from user
   const userEmail = req.body.email;
 
   // query all users with matching userEmail
-  const user = users.find(user => user.email === userEmail);
+  const user = await User.findOne({ email: userEmail });
 
   // check if the posted current password is correct
   if (!user) {
@@ -406,6 +405,7 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
     next(new AppError('User with the specified email not found.', 404));
     return;
   }
+
   // ToDo: Fix from here on
   const resetToken = user.createPasswordResetToken();
 
