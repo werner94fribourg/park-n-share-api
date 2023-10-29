@@ -13,6 +13,7 @@ const {
     changePassword,
     forgotPassword,
     isResetLinkValid,
+    resetPassword,
 } = require('../../controllers/authController');
 const {Router} = require('express');
 const {
@@ -486,8 +487,12 @@ router.route('/confirm-email/:confToken').patch(confirmEmail);
  *               $ref: '#/components/schemas/ServerError'
  */
 router.route('/change-password').patch(protect, changePassword);
+
+
 //TODO: create swagger documentation delete user
 router.route('/:id').delete(protect, deleteUser);
+
+
 //TODO: create swagger documentation
 router.route('/set-role').patch(protect, restrictTo('admin'), setRole);
 
@@ -660,6 +665,6 @@ router.route('/forgot-password').post(forgotPassword);
 router
     .route('/reset-password/:resetToken')
     .get(isResetLinkValid)
-    .post(changePassword);
+    .post(resetPassword);
 
 module.exports = router;

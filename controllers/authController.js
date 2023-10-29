@@ -368,6 +368,43 @@ exports.changePassword = catchAsync(async (req, res, next) => {
   res.status(200).json(resObject);
 });
 
+exports.resetPassword = catchAsync(async (req, res, next) => {
+  const {
+    params: { resetToken },
+  } = req;
+
+  const passwordResetToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+
+  const user = await User.findOne({
+    passwordResetToken,
+    passwordResetExpires: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    next(new AppError('Invalid Link.', 401));
+    return;
+  }
+
+  // update the password fields
+  user.password = req.body.password;
+  user.passwordConfirm = req.body.passwordConfirm;
+
+  await user.save();
+
+  // authenticate the client again
+  const { resObject, cookieOptions } = createSendToken(req, user._id);
+
+  resObject['message'] = 'Password successfully updated.';
+
+  res.cookie('jwt', resObject.token, cookieOptions);
+
+  // send back the response
+  res.status(200).json(resObject);
+});
+
 exports.isResetLinkValid = catchAsync(async (req, res, next) => {
   const {
     params: { resetToken },
