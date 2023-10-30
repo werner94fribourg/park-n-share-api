@@ -4,22 +4,103 @@
  */
 const User = require('../models/userModel');
 const AppError = require('../utils/classes/AppError');
-const { catchAsync } = require('../utils/utils');
+const { USERS_FOLDER } = require('../utils/globals');
+const { catchAsync, uploadImage } = require('../utils/utils');
+const sharp = require('sharp');
 
 exports.getAllUsers = catchAsync(
   /**
-   * Function used to handle the requesting of all existing user resources.
+   * Function used to get all existing user resources in the database.
    * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
    * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
    * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
    */
   async (req, res, next) => {
     const users = await User.find({});
-
+    users.forEach(user => {
+      user.generateFileAbsolutePath();
+    });
     res.status(200).json({
       status: 'success',
       data: { users },
     });
+  },
+);
+
+exports.queryMe = catchAsync(
+  /**
+   * Function used to set the connected user as the one we will request in the next middleware functions.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, _, next) => {
+    req.params.id = req.user._id.valueOf();
+    req.self = true;
+    next();
+  },
+);
+
+exports.getUser = catchAsync(
+  /**
+   * Function used to get a specific user from the database.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, res, next) => {
+    const {
+      params: { id },
+    } = req;
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      next(
+        new AppError("The requested user doesn't exist or was deleted.", 404),
+      );
+      return;
+    }
+
+    user.generateFileAbsolutePath();
+
+    res.status(200).json({
+      status: 'success',
+      data: { user },
+    });
+  },
+);
+
+exports.updateUser = catchAsync(
+  /**
+   * Function used to modify an existing user in the database.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, res, next) => {
+    const {
+      params: { id },
+      body: { photo },
+    } = req;
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      next(
+        new AppError("The requested user doesn't exist or was deleted.", 404),
+      );
+      return;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { photo },
+      { new: true },
+    );
+
+    updatedUser.generateFileAbsolutePath();
+
+    res.status(200).json({ status: 'success', data: { user: updatedUser } });
   },
 );
 
@@ -101,7 +182,47 @@ exports.setRole = catchAsync(
       },
     );
 
+    updatedUser.generateFileAbsolutePath();
+
     // 3) Send the updated User
     res.status(200).json({ status: 'success', data: { user: updatedUser } });
+  },
+);
+
+/**
+ * Multer middleware function that takes care of processing the photo field image associated with the form sent to the server.
+ * @returns {import('express').RequestHandler} The request handler function that takes care of processing the sent image.
+ */
+exports.uploadUserPhoto = uploadImage.single('photo');
+
+exports.resizeUserPhoto = catchAsync(
+  /**
+   * Function that takes care of resizing the profile picture image sent by the user such that it takes a 500x500 pixel format.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, _, next) => {
+    const {
+      file,
+      user: { id },
+    } = req;
+
+    if (!file) {
+      next();
+      return;
+    }
+
+    const filename = `user-${id}-${Date.now()}.jpeg`;
+
+    await sharp(file.buffer)
+      .resize(500, 500)
+      .toFormat('jpeg')
+      .jpeg({ quality: 100 })
+      .toFile(`${USERS_FOLDER}/${filename}`);
+
+    file.filename = filename;
+
+    req.body.photo = filename;
+    next();
   },
 );

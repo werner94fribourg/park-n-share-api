@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const { TWILIO_CLIENT } = require('./globals');
 const { Server } = require('http');
+const multer = require('multer');
 
 const {
   env: { TWILIO_PHONE_NUMBER },
@@ -178,3 +179,22 @@ exports.createLinkToken = () => {
 
   return [token, crypto.createHash('sha256').update(token).digest('hex')];
 };
+
+/**
+ * Multer object used to store files into the file system when they are sent in a form.
+ * @type {import('multer').Multer}
+ */
+exports.uploadImage = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req, file, callback) => {
+    const { mimetype } = file;
+    if (mimetype.startsWith('image')) {
+      callback(null, true);
+      return;
+    }
+    callback(
+      new AppError('Not an image!Please upload only images.', 400),
+      false,
+    );
+  },
+});

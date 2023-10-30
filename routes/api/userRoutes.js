@@ -20,6 +20,11 @@ const {
   getAllUsers,
   deleteUser,
   setRole,
+  queryMe,
+  getUser,
+  uploadUserPhoto,
+  resizeUserPhoto,
+  updateUser,
 } = require('../../controllers/userController');
 
 /**
@@ -51,10 +56,10 @@ const router = Router();
  *           type: string
  *           description: The phone number of the user
  *           example: "+41888888888"
- *         role:
+ *         photo:
  *           type: string
- *           description: The role of the user
- *           example: client
+ *           description: The profile picture of the user
+ *           example: http://localhost:3001/public/img/users/default.jpeg
  */
 
 /**
@@ -596,7 +601,7 @@ router.route('/forgot-password').post(forgotPassword);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ServerError'
- *   post:
+ *   patch:
  *     tags:
  *       - Authentication
  *     summary: Route used to reset a forgotten password
@@ -665,11 +670,12 @@ router.route('/forgot-password').post(forgotPassword);
 router
   .route('/reset-password/:resetToken')
   .get(isResetLinkValid)
-  .post(resetPassword);
+  .patch(resetPassword);
 
+router.use(protect);
 /**
  * @swagger
- * /users/{:id}:
+ * /users/{id}:
  *   delete:
  *     tags:
  *       - User
@@ -683,6 +689,21 @@ router
  *     responses:
  *       204:
  *         description: Successful deletion
+ *       401:
+ *         description: User login problems
+ *         content:
+ *           application/json:
+ *             examples:
+ *               notLoggedInExample:
+ *                 $ref: '#/components/examples/notLoggedInExample'
+ *               accountNotFoundExample:
+ *                 $ref: '#/components/examples/accountNotFoundExample'
+ *               passwordChangedExample:
+ *                 $ref: '#/components/examples/passwordChangedExample'
+ *               InvalidTokenExample:
+ *                 $ref: '#/components/examples/InvalidTokenExample'
+ *               tokenExpiredExample:
+ *                 $ref: '#/components/examples/tokenExpiredExample'
  *       403:
  *         description: Role related errors
  *         content:
@@ -718,11 +739,130 @@ router
  *     security:
  *       - bearerAuth: []
  */
-router.route('/:id').delete(protect, restrictTo('admin'), deleteUser);
+router.route('/:id').delete(restrictTo('admin'), deleteUser);
 
 /**
  * @swagger
- * /users/:id/role:
+ * /users/me:
+ *   get:
+ *     tags:
+ *       - User
+ *     summary: Route used to get the personal informations of the connected user
+ *     responses:
+ *       200:
+ *         description: The logged user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *       401:
+ *         description: User login problems
+ *         content:
+ *           application/json:
+ *             examples:
+ *               notLoggedInExample:
+ *                 $ref: '#/components/examples/notLoggedInExample'
+ *               accountNotFoundExample:
+ *                 $ref: '#/components/examples/accountNotFoundExample'
+ *               passwordChangedExample:
+ *                 $ref: '#/components/examples/passwordChangedExample'
+ *               InvalidTokenExample:
+ *                 $ref: '#/components/examples/InvalidTokenExample'
+ *               tokenExpiredExample:
+ *                 $ref: '#/components/examples/tokenExpiredExample'
+ *       500:
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ServerError'
+ *     security:
+ *       - bearerAuth: []
+ *   patch:
+ *     tags:
+ *       - User
+ *     summary: Route used to modify the personal informations of the connected user
+ *     requestBody:
+ *       description: The new user values (only the profile picture is modifiable at the moment)
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *            type: object
+ *            properties:
+ *              photo:
+ *                type: string
+ *                description: The user's photo
+ *                format: binary
+ *     responses:
+ *       200:
+ *         description: The updated informations of the connected user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Profile picture format error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: fail
+ *                 message:
+ *                   type: string
+ *                   example: Not an image! Please upload only images.
+ *       401:
+ *         description: User login problems
+ *         content:
+ *           application/json:
+ *             examples:
+ *               notLoggedInExample:
+ *                 $ref: '#/components/examples/notLoggedInExample'
+ *               accountNotFoundExample:
+ *                 $ref: '#/components/examples/accountNotFoundExample'
+ *               passwordChangedExample:
+ *                 $ref: '#/components/examples/passwordChangedExample'
+ *               InvalidTokenExample:
+ *                 $ref: '#/components/examples/InvalidTokenExample'
+ *               tokenExpiredExample:
+ *                 $ref: '#/components/examples/tokenExpiredExample'
+ *       500:
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ServerError'
+ *     security:
+ *       - bearerAuth: []
+ */
+router
+  .route('/me')
+  .get(queryMe, getUser)
+  .patch(queryMe, uploadUserPhoto, resizeUserPhoto, updateUser);
+
+/**
+ * @swagger
+ * /users/{id}/role:
  *   patch:
  *     tags:
  *       - User
@@ -757,7 +897,7 @@ router.route('/:id').delete(protect, restrictTo('admin'), deleteUser);
  *                   status: fail
  *                   message: You can't update the role of an admin user.
  *       404:
- *         description: Non existing user deletion attempt
+ *         description: Non existing user
  *         content:
  *           application/json:
  *             schema:
@@ -769,9 +909,15 @@ router.route('/:id').delete(protect, restrictTo('admin'), deleteUser);
  *                 message:
  *                   type: string
  *                   example: The requested user doesn't exist or was deleted.
+ *       500:
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ServerError'
  *     security:
  *       - bearerAuth: []
  */
-router.route('/:id/role').patch(protect, restrictTo('admin'), setRole);
+router.route('/:id/role').patch(restrictTo('admin'), setRole);
 
 module.exports = router;

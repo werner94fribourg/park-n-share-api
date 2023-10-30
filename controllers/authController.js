@@ -5,7 +5,7 @@
 const { catchAsync, createSendToken, sendPinCode } = require('../utils/utils');
 const AppError = require('../utils/classes/AppError');
 const User = require('../models/userModel');
-const { CONFIRMATION_DELAY, FRONT_END_URL } = require('../utils/globals');
+const { CONFIRMATION_DELAY, FRONTEND_URL } = require('../utils/globals');
 const crypto = require('crypto');
 const Email = require('../utils/classes/Email');
 const jwt = require('jsonwebtoken');
@@ -202,7 +202,7 @@ exports.protect = catchAsync(
 
     // 3) Check if the user still exists
     const currentUser = await User.findById(decoded.id).select(
-      '+passwordChangedAt +isConfirmed +isEmailConfirmed',
+      '+role +passwordChangedAt +isConfirmed +isEmailConfirmed',
     );
 
     if (!currentUser) {
@@ -233,36 +233,30 @@ exports.protect = catchAsync(
   },
 );
 
-exports.restrictTo =
+exports.restrictTo = /**
+ * Function used to restrict the access to a route to users if they aren't from a specific one.
+ * @param  {...any} roles The list of roles for which we want to restrict the access of a route.
+ * @returns {import('express').RequestHandler} A request handler function that will check that the user has one of the role specified in the list.
+ */
+  (...roles) =>
   /**
-   * Function used to restrict the access to a route to users if they aren't from a specific one.
-   * @param  {...any} roles The list of roles for which we want to restrict the access of a route.
-   * @returns {import('express').RequestHandler} A request handler function that will check that the user has one of the role specified in the list.
+   * Function that will check that the user have of the specified roles to access a route and deny access if it isn't the case.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
    */
+  (req, _, next) => {
+    const {
+      user: { role },
+    } = req;
+    if (!roles.includes(role)) {
+      next(
+        new AppError("You don't have permission to perform this action.", 403),
+      );
+      return;
+    }
 
-
-    (...roles) =>
-    /**
-     * Function that will check that the user have of the specified roles to access a route and deny access if it isn't the case.
-     * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
-     * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
-     */
-    (req, _, next) => {
-      const {
-        user: { role },
-      } = req;
-      if (!roles.includes(role)) {
-        next(
-          new AppError(
-            "You don't have permission to perform this action.",
-            403,
-          ),
-        );
-        return;
-      }
-
-      next();
-    };
+    next();
+  };
 
 exports.sendConfirmationEmail = catchAsync(
   /**
@@ -288,7 +282,7 @@ exports.sendConfirmationEmail = catchAsync(
 
     //3) Sent the confirmation email
     try {
-      const url = `${FRONT_END_URL}/confirm-email/${confirmEmailToken}`;
+      const url = `${FRONTEND_URL}/confirm-email/${confirmEmailToken}`;
       await new Email(user, url).sendEmailConfirmation();
     } catch (err) {
       user.confirmEmailToken = undefined;
@@ -422,7 +416,7 @@ exports.forgotPassword = catchAsync(
 
     await user.save({ validateBeforeSave: false });
     try {
-      const url = `${FRONT_END_URL}/reset-password/${resetToken}`;
+      const url = `${FRONTEND_URL}/reset-password/${resetToken}`;
 
       await new Email(user, url).sendForgotPassword();
 

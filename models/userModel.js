@@ -6,6 +6,8 @@ const {
   PASSWORD_VALIDATOR,
   CONFIRMATION_DELAY,
   EMAIL_CONFIRMATION_DELAY,
+  USERS_FOLDER,
+  BACKEND_URL,
 } = require('../utils/globals');
 const bcrypt = require('bcryptjs');
 const { isEmail } = require('validator');
@@ -22,6 +24,7 @@ const validatePassword = value => PASSWORD_VALIDATOR.validate(value);
  * @property {string} username The username of the user.
  * @property {string} email The email of the user.
  * @property {string} phone The phone number of the user.
+ * @property {string} photo The profile picture of the user.
  * @property {string} password The password of the user.
  * @property {string} passwordConfirm The password confirmation of the user, which will not be stored in the database.
  * @property {string} role The role of the user.
@@ -71,6 +74,11 @@ const userSchema = new mongoose.Schema({
       message: 'Please provide a valid phone number.',
     },
   },
+  photo: {
+    type: String,
+    trim: true,
+    default: 'default.jpg',
+  },
   password: {
     type: String,
     required: [true, 'Please provide your password.'],
@@ -91,6 +99,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['client', 'provider', 'admin'],
     default: 'client',
+    select: false,
   },
   passwordChangedAt: {
     type: Date,
@@ -133,6 +142,7 @@ const userSchema = new mongoose.Schema({
   isDeactivated: {
     type: Boolean,
     default: false,
+    select: false,
   },
   isDeactivatedAt: {
     type: Date,
@@ -229,6 +239,30 @@ userSchema.methods.createPasswordResetToken = function () {
   this.passwordResetExpires = Date.now() + 24 * 60 * 60 * 1000;
 
   return resetToken;
+};
+
+/**
+ * Function used to check if a jwt token was emitted before the last time the user has changed his password.
+ * @param {number} JWTTimestamp The timestamp value of the emission time of the jwt token.
+ * @returns {boolean} true if the password was changed after the emission of the token, false otherwise.
+ */
+userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
+  if (this.passwordChangedAt) {
+    const changedTimestamp = parseInt(
+      this.passwordChangedAt.getTime() / 1000,
+      10,
+    );
+
+    return JWTTimestamp < changedTimestamp;
+  }
+  return false;
+};
+
+/**
+ * Function used to generate the absolute path location of the profile picture of an user before sending it back to the client that requested it.
+ */
+userSchema.methods.generateFileAbsolutePath = function () {
+  if (this.photo) this.photo = `${BACKEND_URL}/${USERS_FOLDER}/${this.photo}`;
 };
 
 /**

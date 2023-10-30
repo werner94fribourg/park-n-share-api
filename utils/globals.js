@@ -23,10 +23,25 @@ exports.API_ROUTE = '/api/v1';
 exports.PUBLIC_FOLDER = 'public';
 
 /**
+ * Filepath of the img static directory.
+ */
+exports.IMG_FOLDER = exports.PUBLIC_FOLDER + '/img';
+
+/**
+ * File path of the users (i.e. user profile images) static directory.
+ */
+exports.USERS_FOLDER = exports.IMG_FOLDER + '/users';
+
+/**
  * Base URL of the frontend application.
  * @type {string}
  */
-exports.FRONT_END_URL = 'http://localhost:3000';
+exports.FRONTEND_URL = 'http://localhost:3000';
+
+/**
+ * Base URL of the backend application.
+ */
+exports.BACKEND_URL = 'http://localhost:3001';
 
 /**
  * List of url parameters that can happen multiple times.
