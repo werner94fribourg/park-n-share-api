@@ -12,7 +12,8 @@ const influxClient = new InfluxDB({
     '62YhERKnAWyPd59PYO3aS0rCnQlY4pdynwpM_Bl7-AJqjGcksfPZW8FjHjnePGiMlYTiWrePPl_Uqqg18d_WaQ==',
 });
 
-let influxQueryClient = influxClient.getQueryApi('pnsOrg');
+const influxQueryClient = influxClient.getQueryApi('pnsOrg');
+const influxWriteClient = influxClient.getWriteApi('pnsOrg', 'pnsBucket', 'ms');
 
 const thingDescription = {
   id: 'https://127.0.0.1/things/thingy91',
@@ -24,7 +25,7 @@ const thingDescription = {
       type: 'number',
       unit: 'degree celsius',
       readOnly: true,
-      description: 'An ambient temperature sensor',
+      description: 'A measurement of ambient temperature',
       links: [{ href: '/things/thingy91/properties/temperature' }],
     },
     humidity: {
@@ -32,6 +33,7 @@ const thingDescription = {
       type: 'number',
       unit: 'percent',
       readOnly: true,
+      description: 'A measurement of ambient humidity',
       links: [{ href: '/things/thingy91/properties/humidity' }],
     },
     airPressure: {
@@ -39,7 +41,23 @@ const thingDescription = {
       type: 'number',
       unit: 'kPa',
       readOnly: true,
+      description: 'A measurement of ambient air pressure',
       links: [{ href: '/things/thingy91/properties/airPressure' }],
+    },
+
+    events: {
+      flip: {
+        title: 'Flip',
+        type: 'string',
+        readOnly: true,
+        description: 'The Thingy has been flipped to a different side',
+      },
+      button: {
+        title: 'Button',
+        type: 'boolean',
+        readOnly: true,
+        description: 'The button has been pressed or released',
+      },
     },
   },
 };
@@ -53,26 +71,62 @@ exports.getThingDescription = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.getTemperature10Mins = catchAsync(async (req, res, next) => {
-  let fluxQuery = `from(bucket: "pnsBucket")
- |> range(start: -5m)`;
+exports.getTemperature = catchAsync(async (req, res, next) => {
+  const interval = req.query.interval || '30m'; // Default interval is 30min
+
+  let fluxQuery = `
+  from(bucket: "pnsBucket")
+ |> range(start: -${interval})
+ |> filter(fn: (r) => r._measurement == "thingy91")
+`;
 
   const result = [];
 
   influxQueryClient.queryRows(fluxQuery, {
     next: (row, tableMeta) => {
-      const tableObject = tableMeta.toObject(row);
-      result.push(tableObject);
+      const rowObject = tableMeta.toObject(row);
+      result.push(rowObject);
     },
     error: error => {
-      console.error('\nError', error);
       res.status(500).json({
         status: 'error',
-        message: 'An error occurred while fetching data',
+        message: `An error occurred while fetching data: ${error}`,
       });
     },
     complete: () => {
-      console.log('\nSuccess');
+      res.status(200).json({
+        status: 'success',
+        data: result,
+      });
+    },
+  });
+});
+
+exports.getMeanTemperature = catchAsync(async (req, res, next) => {
+  const interval = req.query.interval || '1h'; // Default interval is 1h
+
+  let fluxQuery = `
+  from(bucket: "pnsBucket")
+    |> range(start: -${interval}) // Adjust the time range as needed
+    |> filter(fn: (r) => r._measurement == "thingy91" and r._field == "temperature")
+    |> group(columns: ["_field"])
+    |> mean()
+`;
+
+  const result = [];
+
+  influxQueryClient.queryRows(fluxQuery, {
+    next: (row, tableMeta) => {
+      const rowObject = tableMeta.toObject(row);
+      result.push(rowObject);
+    },
+    error: error => {
+      res.status(500).json({
+        status: 'error',
+        message: `An error occurred while fetching data: ${error}`,
+      });
+    },
+    complete: () => {
       res.status(200).json({
         status: 'success',
         data: result,
@@ -83,12 +137,6 @@ exports.getTemperature10Mins = catchAsync(async (req, res, next) => {
 
 exports.addPropertyTemp = catchAsync(async (req, res, next) => {
   const incomingTempData = req.body;
-
-  const influxWriteClient = influxClient.getWriteApi(
-    'pnsOrg',
-    'pnsBucket',
-    'ms',
-  );
 
   let point = new Point('thingy91')
     .tag('location', 'switzerland')
