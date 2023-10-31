@@ -1,7 +1,7 @@
 const mqtt = require('mqtt');
 const axios = require('axios');
 
-const { addPropertyTemp } = require('./thingyController');
+const { addFloatProperty } = require('./thingyController');
 
 // MQTT credentials
 const mqttOptions = {
@@ -22,8 +22,10 @@ mqttClient.on('message', async (topic, message) => {
   // Parse the MQTT message
   const data = JSON.parse(message);
 
-  if (data.appId == 'TEMP') {
-    await addPropertyTemp(data); // Wait for data to be stored
+  if (
+    ['TEMP', 'CO2_EQUIV', 'HUMID', 'AIR_PRESS', 'AIR_QUAL'].includes(data.appId)
+  ) {
+    await addFloatProperty(data); // Wait for data to be stored
     data.ts = new Date().getTime();
     console.log('Added: ', JSON.stringify(data, null, 2));
   }

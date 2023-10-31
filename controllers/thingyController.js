@@ -2,7 +2,7 @@
  * Functions related to calling the thingy resource in the API
  * @module thingyController
  */
-const { Request, Response, NextFunction } = require('express');
+const { Request, Response, NextFunction, query } = require('express');
 const { catchAsync } = require('../utils/utils');
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
 
@@ -15,7 +15,7 @@ const influxClient = new InfluxDB({
 // Define batch options
 const batchOptions = {
   flushInterval: 1000, // Adjust this interval as needed (in milliseconds)
-  batchSize: 5, // Adjust this batch size as needed
+  batchSize: 10, // Adjust this batch size as needed
 };
 
 const influxQueryClient = influxClient.getQueryApi('pnsOrg');
@@ -73,6 +73,43 @@ const thingDescription = {
   },
 };
 
+function sendQueryResults(res, fluxQuery) {
+  const result = [];
+
+  influxQueryClient.queryRows(fluxQuery, {
+    next: (row, tableMeta) => {
+      const rowObject = tableMeta.toObject(row);
+      result.push(rowObject);
+    },
+    error: error => {
+      res.status(500).json({
+        status: 'error',
+        message: `An error occurred while fetching data: ${error}`,
+      });
+    },
+    complete: () => {
+      res.status(200).json({
+        status: 'success',
+        data: result,
+      });
+    },
+  });
+}
+
+function constructBasicPropertyQuery(bucket, interval, measurement, field) {
+  return `from(bucket: "${bucket}")
+  |> range(start: -${interval})
+  |> filter(fn: (r) => r._measurement == "${measurement}" and r._field == "${field}")`;
+}
+
+function constructMeanPropertyQuery(bucket, interval, measurement, field) {
+  return `from(bucket: "${bucket}")
+  |> range(start: -${interval})
+  |> filter(fn: (r) => r._measurement == "${measurement}" and r._field == "${field}")
+  |> group(columns: ["_field"])
+  |> mean()`;
+}
+
 exports.getThingDescription = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: 'success',
@@ -80,74 +117,33 @@ exports.getThingDescription = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.getTemperature = catchAsync(async (req, res, next) => {
+exports.getProperty = catchAsync(async (req, res, next) => {
   const interval = req.query.interval || '30m'; // Default interval is 30min
-
-  let fluxQuery = `
-  from(bucket: "pnsBucket")
- |> range(start: -${interval})
- |> filter(fn: (r) => r._measurement == "thingy91")
-`;
-
-  const result = [];
-
-  influxQueryClient.queryRows(fluxQuery, {
-    next: (row, tableMeta) => {
-      const rowObject = tableMeta.toObject(row);
-      result.push(rowObject);
-    },
-    error: error => {
-      res.status(500).json({
-        status: 'error',
-        message: `An error occurred while fetching data: ${error}`,
-      });
-    },
-    complete: () => {
-      res.status(200).json({
-        status: 'success',
-        data: result,
-      });
-    },
-  });
+  const property = req.params.property;
+  let fluxQuery = constructBasicPropertyQuery(
+    'pnsBucket',
+    interval,
+    'thingy91',
+    property,
+  );
+  sendQueryResults(res, fluxQuery);
 });
 
-exports.getMeanTemperature = catchAsync(async (req, res, next) => {
+exports.getMeanOfProperty = catchAsync(async (req, res, next) => {
   const interval = req.query.interval || '1h'; // Default interval is 1h
-
-  let fluxQuery = `
-  from(bucket: "pnsBucket")
-    |> range(start: -${interval}) // Adjust the time range as needed
-    |> filter(fn: (r) => r._measurement == "thingy91" and r._field == "temperature")
-    |> group(columns: ["_field"])
-    |> mean()
-`;
-
-  const result = [];
-
-  influxQueryClient.queryRows(fluxQuery, {
-    next: (row, tableMeta) => {
-      const rowObject = tableMeta.toObject(row);
-      result.push(rowObject);
-    },
-    error: error => {
-      res.status(500).json({
-        status: 'error',
-        message: `An error occurred while fetching data: ${error}`,
-      });
-    },
-    complete: () => {
-      res.status(200).json({
-        status: 'success',
-        data: result,
-      });
-    },
-  });
+  const property = req.params.property;
+  let fluxQuery = constructMeanPropertyQuery(
+    'pnsBucket',
+    interval,
+    'thingy91',
+    property,
+  );
+  sendQueryResults(res, fluxQuery);
 });
 
-exports.addPropertyTemp = async tempData => {
+exports.addFloatProperty = async tempData => {
   let point = new Point('thingy91')
-    .tag('location', 'switzerland')
-    .floatField('temperature', tempData.data)
+    .floatField(tempData.appId, tempData.data)
     .timestamp(new Date().getTime());
 
   influxWriteClient.writePoint(point);

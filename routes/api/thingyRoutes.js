@@ -5,8 +5,8 @@
 const { Router } = require('express');
 const {
   getThingDescription,
-  getTemperature,
-  getMeanTemperature,
+  getProperty,
+  getMeanOfProperty,
 } = require('../../controllers/thingyController');
 
 /**
@@ -59,7 +59,7 @@ const router = Router();
  *                         $ref: '#/components/schemas/User'
  */
 router.route('/').get(getThingDescription);
-router.route('/properties/temp').get(getTemperature);
-router.route('/properties/meanTemp').get(getMeanTemperature);
+router.route('/properties/:property').get(getProperty);
+router.route('/properties/:property/mean').get(getMeanOfProperty);
 
 module.exports = router;
