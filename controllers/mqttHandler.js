@@ -1,6 +1,8 @@
 const mqtt = require('mqtt');
 const axios = require('axios');
 
+const { addPropertyTemp } = require('./thingyController');
+
 // MQTT credentials
 const mqttOptions = {
   username: 'blue',
@@ -16,28 +18,15 @@ mqttClient.on('connect', () => {
   mqttClient.subscribe('things/blue-1/shadow/update');
 });
 
-mqttClient.on('message', (topic, message) => {
+mqttClient.on('message', async (topic, message) => {
   // Parse the MQTT message
   const data = JSON.parse(message);
 
   if (data.appId == 'TEMP') {
-    axios
-      .post(
-        'http://127.0.0.1:3001/api/v1/things/thingy91/properties/temp',
-        data,
-      )
-      .then(response => {
-        console.log(
-          'Response from server:',
-          JSON.stringify(response.data, null, 2),
-        );
-      })
-      .catch(error => {
-        console.error('Error sending data:', error);
-      });
+    await addPropertyTemp(data); // Wait for data to be stored
+    data.ts = new Date().getTime();
+    console.log('Added: ', JSON.stringify(data, null, 2));
   }
-  // Store the data in InfluxDB
-  //data.state ? console.log('Ignored') : console.log(data);
 });
 
 // Handle MQTT errors

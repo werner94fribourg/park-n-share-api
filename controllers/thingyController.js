@@ -12,8 +12,19 @@ const influxClient = new InfluxDB({
     '62YhERKnAWyPd59PYO3aS0rCnQlY4pdynwpM_Bl7-AJqjGcksfPZW8FjHjnePGiMlYTiWrePPl_Uqqg18d_WaQ==',
 });
 
+// Define batch options
+const batchOptions = {
+  flushInterval: 1000, // Adjust this interval as needed (in milliseconds)
+  batchSize: 5, // Adjust this batch size as needed
+};
+
 const influxQueryClient = influxClient.getQueryApi('pnsOrg');
-const influxWriteClient = influxClient.getWriteApi('pnsOrg', 'pnsBucket', 'ms');
+const influxWriteClient = influxClient.getWriteApi(
+  'pnsOrg',
+  'pnsBucket',
+  'ms',
+  batchOptions,
+);
 
 const thingDescription = {
   id: 'https://127.0.0.1/things/thingy91',
@@ -61,8 +72,6 @@ const thingDescription = {
     },
   },
 };
-
-const thingyProperties = { temperature: [] };
 
 exports.getThingDescription = catchAsync(async (req, res, next) => {
   res.status(200).json({
@@ -135,22 +144,11 @@ exports.getMeanTemperature = catchAsync(async (req, res, next) => {
   });
 });
 
-exports.addPropertyTemp = catchAsync(async (req, res, next) => {
-  const incomingTempData = req.body;
-
+exports.addPropertyTemp = async tempData => {
   let point = new Point('thingy91')
     .tag('location', 'switzerland')
-    .floatField('temperature', incomingTempData.data)
+    .floatField('temperature', tempData.data)
     .timestamp(new Date().getTime());
 
   influxWriteClient.writePoint(point);
-
-  thingyProperties.temperature.push({
-    value: incomingTempData.data,
-    timestamp: incomingTempData.ts,
-  });
-  res.status(200).json({
-    status: 'success',
-    data: thingyProperties,
-  });
-});
+};
