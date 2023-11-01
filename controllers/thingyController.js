@@ -102,12 +102,18 @@ function constructBasicPropertyQuery(bucket, interval, measurement, field) {
   |> filter(fn: (r) => r._measurement == "${measurement}" and r._field == "${field}")`;
 }
 
-function constructMeanPropertyQuery(bucket, interval, measurement, field) {
+function constructStatisticalQueryOnProperty(
+  bucket,
+  interval,
+  measurement,
+  field,
+  statistic,
+) {
   return `from(bucket: "${bucket}")
   |> range(start: -${interval})
   |> filter(fn: (r) => r._measurement == "${measurement}" and r._field == "${field}")
   |> group(columns: ["_field"])
-  |> mean()`;
+  |> ${statistic}()`;
 }
 
 exports.getThingDescription = catchAsync(async (req, res, next) => {
@@ -129,14 +135,16 @@ exports.getProperty = catchAsync(async (req, res, next) => {
   sendQueryResults(res, fluxQuery);
 });
 
-exports.getMeanOfProperty = catchAsync(async (req, res, next) => {
+exports.getStatisticOfProperty = catchAsync(async (req, res, next) => {
   const interval = req.query.interval || '1h'; // Default interval is 1h
   const property = req.params.property;
-  let fluxQuery = constructMeanPropertyQuery(
+  const statistic = req.params.statistic;
+  let fluxQuery = constructStatisticalQueryOnProperty(
     'pnsBucket',
     interval,
     'thingy91',
     property,
+    statistic,
   );
   sendQueryResults(res, fluxQuery);
 });

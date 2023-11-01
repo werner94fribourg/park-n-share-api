@@ -6,7 +6,7 @@ const { Router } = require('express');
 const {
   getThingDescription,
   getProperty,
-  getMeanOfProperty,
+  getStatisticOfProperty,
 } = require('../../controllers/thingyController');
 
 /**
@@ -60,6 +60,6 @@ const router = Router();
  */
 router.route('/').get(getThingDescription);
 router.route('/properties/:property').get(getProperty);
-router.route('/properties/:property/mean').get(getMeanOfProperty);
+router.route('/properties/:property/:statistic').get(getStatisticOfProperty);
 
 module.exports = router;
