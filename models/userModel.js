@@ -211,7 +211,7 @@ userSchema.methods.createPinCode = function () {
     .digest('hex');
   this.pinCode = cryptedPin;
   this.pinCodeExpires = Date.now() + CONFIRMATION_DELAY;
-  return pinCode;
+  return [pinCode, this.pinCodeExpires];
 };
 
 /**

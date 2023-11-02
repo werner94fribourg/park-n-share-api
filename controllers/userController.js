@@ -170,6 +170,7 @@ exports.setRole = catchAsync(
     // 2) Create Error if the requested user is an admin
     if (user.role === 'admin') {
       next(new AppError("You can't update the role of an admin user.", 403));
+      return;
     }
 
     // 3) Update the user

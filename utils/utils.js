@@ -161,13 +161,15 @@ exports.createSendToken = (req, id) => {
  * @param {User} user The user to whom we want to send a SMS.
  */
 exports.sendPinCode = async user => {
-  const pinCode = user.createPinCode();
+  const [pinCode, pinCodeExpires] = user.createPinCode();
   await user.save({ validateBeforeSave: false });
   TWILIO_CLIENT.messages.create({
     from: TWILIO_PHONE_NUMBER,
     to: user.phone,
     body: `${pinCode}`,
   });
+
+  return pinCodeExpires;
 };
 
 /**
