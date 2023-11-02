@@ -7,6 +7,7 @@ const {
   getThingDescription,
   getProperty,
   getStatisticOfProperty,
+  getButtonTimer,
 } = require('../../controllers/thingyController');
 
 /**
@@ -60,6 +61,9 @@ const router = Router();
  */
 router.route('/').get(getThingDescription);
 router.route('/properties/:property').get(getProperty);
-router.route('/properties/:property/:statistic').get(getStatisticOfProperty);
+router.route('/properties/BUTTON/timer').get(getButtonTimer);
+router
+  .route('/properties/:property/statistics/:statistic')
+  .get(getStatisticOfProperty);
 
 module.exports = router;

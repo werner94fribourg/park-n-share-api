@@ -7,9 +7,8 @@ const { catchAsync } = require('../utils/utils');
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
 
 const influxClient = new InfluxDB({
-  url: 'http://127.0.0.1:8086',
-  token:
-    '62YhERKnAWyPd59PYO3aS0rCnQlY4pdynwpM_Bl7-AJqjGcksfPZW8FjHjnePGiMlYTiWrePPl_Uqqg18d_WaQ==',
+  url: process.env.INFLUX_URL,
+  token: process.env.INFLUX_TOKEN,
 });
 
 // Define batch options
@@ -96,6 +95,26 @@ function sendQueryResults(res, fluxQuery) {
   });
 }
 
+function getQueryRows(res, fluxQuery) {
+  const result = [];
+
+  influxQueryClient.queryRows(fluxQuery, {
+    next: (row, tableMeta) => {
+      const rowObject = tableMeta.toObject(row);
+      result.push(rowObject);
+    },
+    error: error => {
+      res.status(500).json({
+        status: 'error',
+        message: `An error occurred while fetching data: ${error}`,
+      });
+    },
+    complete: () => {
+      return result;
+    },
+  });
+}
+
 function constructBasicPropertyQuery(bucket, interval, measurement, field) {
   return `from(bucket: "${bucket}")
   |> range(start: -${interval})
@@ -149,9 +168,36 @@ exports.getStatisticOfProperty = catchAsync(async (req, res, next) => {
   sendQueryResults(res, fluxQuery);
 });
 
-exports.addFloatProperty = async tempData => {
+exports.getButtonTimer = catchAsync(async (req, res, next) => {
+  let fluxQuery = `from(bucket: "pnsBucket")
+  |> range(start: -1h) // Set the appropriate time range
+  |> filter(fn: (r) => r._measurement == "thingy91" and r._field == "BUTTON")
+  |> map(fn: (r) => ({
+      value: r._value,
+      time: r._time
+  }))
+  |> cumulativeSum(columns: ["value"])
+  |> difference()
+  |> filter(fn: (r) => r._value == -1)
+  |> tail(n: 2) // Limit the result to the last two released events
+  |> map(fn: (r, idx) => ({
+      time: r._time
+  }))
+  |> difference()`;
+  sendQueryResults(res, fluxQuery);
+});
+
+exports.addFloatProperty = async message => {
   let point = new Point('thingy91')
-    .floatField(tempData.appId, tempData.data)
+    .floatField(message.appId, message.data)
+    .timestamp(new Date().getTime());
+
+  influxWriteClient.writePoint(point);
+};
+
+exports.addIntegerProperty = async message => {
+  let point = new Point('thingy91')
+    .intField(message.appId, message.data)
     .timestamp(new Date().getTime());
 
   influxWriteClient.writePoint(point);
