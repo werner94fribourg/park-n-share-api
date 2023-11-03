@@ -8,6 +8,8 @@ const {
   getProperty,
   getStatisticOfProperty,
   getButtonTimer,
+  setBuzzer,
+  setLEDColor,
 } = require('../../controllers/thingyController');
 
 /**
@@ -65,5 +67,7 @@ router.route('/properties/BUTTON/timer').get(getButtonTimer);
 router
   .route('/properties/:property/statistics/:statistic')
   .get(getStatisticOfProperty);
+router.route('/properties/BUZZER/:setting').post(setBuzzer);
+router.route('/properties/LED/setColor/:color').post(setLEDColor);
 
 module.exports = router;

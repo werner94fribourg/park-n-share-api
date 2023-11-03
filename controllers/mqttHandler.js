@@ -16,6 +16,21 @@ const mqttClient = mqtt.connect(mqttServer, mqttOptions);
 mqttClient.on('connect', () => {
   console.log('Connected to MQTT server.'); // Add this line
   mqttClient.subscribe('things/blue-1/shadow/update');
+
+  // const topic = 'things/blue-1/shadow/update/accepted';
+  // const message = JSON.stringify({
+  //   appId: 'BUZZER',
+  //   data: { frequency: 2000 },
+  //   messageType: 'CFG_SET',
+  // });
+
+  // mqttClient.publish(topic, message, error => {
+  //   if (error) {
+  //     console.error('Error publishing message:', error);
+  //   } else {
+  //     console.log('Message published successfully.');
+  //   }
+  // });
 });
 
 mqttClient.on('message', async (topic, message) => {
@@ -39,3 +54,5 @@ mqttClient.on('message', async (topic, message) => {
 mqttClient.on('error', error => {
   console.error('MQTT connection error:', error);
 });
+
+module.exports = mqttClient;

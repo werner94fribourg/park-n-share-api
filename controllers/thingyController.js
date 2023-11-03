@@ -72,6 +72,21 @@ const thingDescription = {
   },
 };
 
+function publishToMQTT(topic, message, res) {
+  mqttClient.publish(topic, message, error => {
+    if (error) {
+      console.error('Error publishing message:', error);
+    } else {
+      console.log('Successfully published the following message: ', message);
+    }
+  });
+
+  res.status(200).json({
+    status: 'success',
+    data: { message },
+  });
+}
+
 function sendQueryResults(res, fluxQuery) {
   const result = [];
 
@@ -202,3 +217,44 @@ exports.addIntegerProperty = async message => {
 
   influxWriteClient.writePoint(point);
 };
+
+exports.setBuzzer = catchAsync(async (req, res, next) => {
+  const mqttClient = require('./mqttHandler');
+  const freq = +req.query.freq || 1000;
+  const setting = req.params.setting;
+  const topic = 'things/blue-1/shadow/update/accepted';
+
+  if (setting == 'off') {
+    freq = 0;
+  }
+
+  const message = JSON.stringify({
+    appId: 'BUZZER',
+    data: { frequency: freq },
+    messageType: 'CFG_SET',
+  });
+
+  publishToMQTT(topic, message, res);
+});
+
+exports.setLEDColor = catchAsync(async (req, res, next) => {
+  const mqttClient = require('./mqttHandler');
+  let colorToBeSet = req.params.color || 'red';
+  const topic = 'things/blue-1/shadow/update/accepted';
+
+  if (colorToBeSet == 'blue') {
+    colorToBeSet = '0000ff';
+  } else if (colorToBeSet == 'green') {
+    colorToBeSet = '00ff00';
+  } else {
+    colorToBeSet = 'ff0000';
+  }
+
+  const message = JSON.stringify({
+    appId: 'LED',
+    data: { color: colorToBeSet },
+    messageType: 'CFG_SET',
+  });
+
+  publishToMQTT(topic, message, res);
+});
