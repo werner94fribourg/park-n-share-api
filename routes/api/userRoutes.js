@@ -201,6 +201,22 @@ router.route('/').get(getAllUsers);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/SuccessLogin'
+ *       400:
+ *         description: Incorrect field validation
+ *         content:
+ *           application/json:
+ *             examples:
+ *               invalidInputExample:
+ *                 summary: Invalid field
+ *                 value:
+ *                   status: fail
+ *                   message: Invalid input data.
+ *                   fields: [email: Please provide a valid email address.]
+ *               duplicateFieldExample:
+ *                 summary: Duplicate field value (email or username)
+ *                 value:
+ *                   status: fail
+ *                   message: "Duplicate field value: \"werner97@hotmail.com\". Please use another value!"
  *       500:
  *         description: Internal Server Error
  *         content:
