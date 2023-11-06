@@ -39,8 +39,8 @@ const parkSchema = new mongoose.Schema({
         unique: true,
         trim: true,
         lowercase: true,
-        maxLength: [30, 'An username must have less or equal than 15 characters.'],
-        minlength: [4, 'An username must have at least 4 characters.'],
+        maxLength: [30, 'A parking slot title must have less or equal than 15 characters.'],
+        minlength: [4, 'A parking slot title must have at least 4 characters.'],
     },
     description: {
         type: String,
@@ -61,7 +61,7 @@ const parkSchema = new mongoose.Schema({
     },
     price: {
         type: String,
-        required: true,
+        required: [true, "Please provide a value, even if it is for free."],
         unique: false,
         lowercase: true,
         trim: true,
@@ -72,14 +72,21 @@ const parkSchema = new mongoose.Schema({
     },
     location: {
         type: String,
-        required: true,
+        required: [true, 'Please provide the city in which your parking slot is located.'],
+        unique: false,
+        lowercase: true,
+        trim: true,
+    },
+    address: {
+        type: String,
+        required: [true, 'Please provide the address in which your parking slot is located.'],
         unique: false,
         lowercase: true,
         trim: true,
     },
     provider: {
         type: String,
-        required: false,
+        required: true,
         unique: false,
         lowercase: true,
         trim: true,
