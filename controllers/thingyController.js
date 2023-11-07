@@ -72,7 +72,7 @@ const thingDescription = {
   },
 };
 
-function publishToMQTT(topic, message, res) {
+function publishToMQTT(mqttClient, topic, message, res) {
   mqttClient.publish(topic, message, error => {
     if (error) {
       console.error('Error publishing message:', error);
@@ -111,24 +111,125 @@ function sendQueryResults(res, fluxQuery) {
 }
 
 function getQueryRows(res, fluxQuery) {
-  const result = [];
+  return new Promise((resolve, reject) => {
+    let result = [];
 
-  influxQueryClient.queryRows(fluxQuery, {
-    next: (row, tableMeta) => {
-      const rowObject = tableMeta.toObject(row);
-      result.push(rowObject);
-    },
-    error: error => {
-      res.status(500).json({
-        status: 'error',
-        message: `An error occurred while fetching data: ${error}`,
-      });
-    },
-    complete: () => {
-      return result;
-    },
+    influxQueryClient.queryRows(fluxQuery, {
+      next: (row, tableMeta) => {
+        const rowObject = tableMeta.toObject(row);
+        result.push(rowObject);
+      },
+      error: error => {
+        reject(`An error occurred while fetching data: ${error}`);
+      },
+      complete: () => {
+        resolve(result);
+      },
+    });
   });
 }
+
+exports.deleteButtonData = catchAsync(async (req, res, next) => {});
+
+exports.getButtonTimer = catchAsync(async (req, res, next) => {
+  const fluxQuery = `from(bucket: "pnsBucket")
+  |> range(start: -1d)
+  |> filter(fn: (r) => r._measurement == "thingy91" and r._field == "BUTTON" and r._value == 0)
+  |> sort(columns: ["_time"], desc: true)
+  |> limit(n: 2)`;
+
+  const countedFluxQuery = `from(bucket: "pnsBucket")
+  |> range(start: -1d)
+  |> filter(fn: (r) => r._measurement == "thingy91" and r._field == "BUTTON")
+  |> group(columns: ["_field"])
+  |> count()`;
+
+  let rows = [];
+  let countResult = [];
+
+  try {
+    rows = await getQueryRows(res, fluxQuery);
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: `Oops, something went wrong with the following query: ${fluxQuery}`,
+    });
+    return;
+  }
+
+  try {
+    countResult = await getQueryRows(res, countedFluxQuery);
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: `Oops, something went wrong with the following query: ${countedFluxQuery}`,
+    });
+    return;
+  }
+
+  const count = countResult[0]._value; // Length of the count result
+
+  if (count === 0) {
+    console.log('No rows matched');
+  } else if ((count / 2) % 2 === 0) {
+    // Handle the case when the count is even (returning two last rows)
+    console.log('The number of rows is even and equals: ', count / 2); // rows will contain the last two rows
+  } else {
+    // Handle the case when the count is odd (returning one last row)
+    console.log('The number of rows is odd and equals: ', count / 2); // rows will contain the last row
+    if (rows.length == 2) {
+      rows = [rows[1]];
+    }
+  }
+
+  console.log(rows.length);
+
+  if (!rows) {
+    res.status(200).json({
+      status: 'fail',
+      errorMessage: 'No timer has been starter for the last 24h',
+      data: [],
+    });
+  } else if (rows.length >= 1) {
+    let time1 = new Date(rows[0]._time);
+    let time2 = new Date();
+    if (rows.length == 2) {
+      time2 = new Date(rows[0]._time);
+      time1 = new Date(rows[1]._time);
+    }
+
+    const timeDifference = time2 - time1;
+
+    const days = Math.floor(timeDifference / 86400000); // 1 day = 24 hours * 60 minutes * 60 seconds * 1000 milliseconds
+    const remainingTime = timeDifference % 86400000; // Remaining time in milliseconds
+
+    const hours = Math.floor(remainingTime / 3600000); // 1 hour = 60 minutes * 60 seconds * 1000 milliseconds
+    const minutes = Math.floor((remainingTime % 3600000) / 60000); // 1 minute = 60 seconds * 1000 milliseconds
+    const seconds = ((remainingTime % 3600000) % 60000) / 1000;
+
+    const timerObject = {
+      days: days,
+      hours: hours,
+      minutes: minutes,
+      seconds: seconds.toFixed(0),
+    };
+
+    const timer = `${days}d ${hours}h ${minutes}m ${seconds.toFixed(0)}s`;
+
+    console.log(timer); // Output: "0h 0m 0.180s"
+
+    res.status(200).json({
+      status: 'success',
+      data: timerObject,
+    });
+  } else {
+    res.status(200).json({
+      status: 'error',
+      errorMessage: 'Oops, something went wrong while computing timer data',
+      data: [],
+    });
+  }
+});
 
 function constructBasicPropertyQuery(bucket, interval, measurement, field) {
   return `from(bucket: "${bucket}")
@@ -183,25 +284,6 @@ exports.getStatisticOfProperty = catchAsync(async (req, res, next) => {
   sendQueryResults(res, fluxQuery);
 });
 
-exports.getButtonTimer = catchAsync(async (req, res, next) => {
-  let fluxQuery = `from(bucket: "pnsBucket")
-  |> range(start: -1h) // Set the appropriate time range
-  |> filter(fn: (r) => r._measurement == "thingy91" and r._field == "BUTTON")
-  |> map(fn: (r) => ({
-      value: r._value,
-      time: r._time
-  }))
-  |> cumulativeSum(columns: ["value"])
-  |> difference()
-  |> filter(fn: (r) => r._value == -1)
-  |> tail(n: 2) // Limit the result to the last two released events
-  |> map(fn: (r, idx) => ({
-      time: r._time
-  }))
-  |> difference()`;
-  sendQueryResults(res, fluxQuery);
-});
-
 exports.addFloatProperty = async message => {
   let point = new Point('thingy91')
     .floatField(message.appId, message.data)
@@ -220,7 +302,7 @@ exports.addIntegerProperty = async message => {
 
 exports.setBuzzer = catchAsync(async (req, res, next) => {
   const mqttClient = require('./mqttHandler');
-  const freq = +req.query.freq || 1000;
+  let freq = +req.query.freq || 1000;
   const setting = req.params.setting;
   const topic = 'things/blue-1/shadow/update/accepted';
 
@@ -234,7 +316,7 @@ exports.setBuzzer = catchAsync(async (req, res, next) => {
     messageType: 'CFG_SET',
   });
 
-  publishToMQTT(topic, message, res);
+  publishToMQTT(mqttClient, topic, message, res);
 });
 
 exports.setLEDColor = catchAsync(async (req, res, next) => {
@@ -256,5 +338,5 @@ exports.setLEDColor = catchAsync(async (req, res, next) => {
     messageType: 'CFG_SET',
   });
 
-  publishToMQTT(topic, message, res);
+  publishToMQTT(mqttClient, topic, message, res);
 });

@@ -42,7 +42,7 @@ mqttClient.on('message', async (topic, message) => {
   ) {
     await addFloatProperty(data); // Wait for data to be stored
     data.ts = new Date().getTime();
-    console.log('Added: ', JSON.stringify(data, null, 2));
+    //console.log('Added: ', JSON.stringify(data, null, 2));
   } else if (data.appId == 'BUTTON') {
     await addIntegerProperty(data);
     data.ts = new Date().getTime();
