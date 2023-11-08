@@ -5,7 +5,7 @@
 const { catchAsync, createSendToken, sendPinCode } = require('../utils/utils');
 const AppError = require('../utils/classes/AppError');
 const User = require('../models/userModel');
-const { CONFIRMATION_DELAY, FRONTEND_URL } = require('../utils/globals');
+const { FRONTEND_URL } = require('../utils/globals');
 const crypto = require('crypto');
 const Email = require('../utils/classes/Email');
 const jwt = require('jsonwebtoken');
@@ -45,11 +45,6 @@ exports.signup = catchAsync(
       console.error(err);
       return;
     }
-
-    setTimeout(async () => {
-      const user = User.findById(newUser._id).select('+isConfirmed');
-      if (user && !user.isConfirmed) await User.findByIdAndDelete(newUser._id);
-    }, CONFIRMATION_DELAY + 1000);
 
     res.status(201).json({
       status: 'success',
