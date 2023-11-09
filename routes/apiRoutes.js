@@ -3,19 +3,14 @@
  * @module apiRoutes
  */
 const { Router } = require('express');
-
-const clientRouter = require('./api/clientRoutes');
-const providerRouter = require('./api/providerRoutes');
-const adminRouter = require('./api/adminRoutes');
+const userRouter = require('./api/userRoutes');
 
 /**
  * The main router of the application.
- * @typedef {Router}
+ * @type {Router}
  */
 const router = Router();
 
-router.use('/clients', clientRouter);
-router.use('/providers', providerRouter);
-router.use('/admins', adminRouter);
+router.use('/users', userRouter);
 
 module.exports = router;

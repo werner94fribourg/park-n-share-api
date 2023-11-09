@@ -2,7 +2,6 @@
  * Functions related to error handling in an API call
  * @module errorController
  */
-const { Response, NextFunction } = require('express');
 const AppError = require('../utils/classes/AppError');
 const {
   handleCastErrorDB,
@@ -18,8 +17,8 @@ const {
  * Error handling function, that will take care of generating the correct HTTP response object
  * to the user in the case an error was generated during a route call.
  * @param {AppError} err The generated error in the application.
- * @param {Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
- * @param {NextFunction} next The next function of the express framework, used to handle the next middleware function passed to the express pipeline.
+ * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+ * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
  */
 module.exports = (err, _, res, next) => {
   err.statusCode = err.statusCode || 500;
