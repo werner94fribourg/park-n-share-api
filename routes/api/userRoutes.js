@@ -668,6 +668,27 @@ router.route('/forgot-password').post(forgotPassword);
  *                     valid:
  *                       type: boolean
  *                       example: false
+ *       400:
+ *         description: Incorrect field validation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: fail
+ *                 message:
+ *                   type: string
+ *                   example: Invalid input data.
+ *                 fields:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       password:
+ *                         type: string
+ *                         example: Please provide a valid password.
  *       500:
  *         description: Internal Server Error
  *         content:
