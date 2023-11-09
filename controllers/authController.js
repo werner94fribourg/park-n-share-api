@@ -536,6 +536,11 @@ exports.resetPassword = catchAsync(
 
     await user.save();
 
+    user.passwordResetExpires = undefined;
+    user.passwordResetToken = undefined;
+
+    await user.save({ validateBeforeSave: false });
+
     // authenticate the client again
     const { resObject, cookieOptions } = createSendToken(req, user._id);
 
