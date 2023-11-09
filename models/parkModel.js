@@ -3,7 +3,11 @@
  * @module userModel
  */
 
-const mongoose = require('mongoose');
+const { mongoose, Schema } = require('mongoose');
+const {
+    USERS_FOLDER,
+    BACKEND_URL,
+} = require('../utils/globals');
 
 /**
  * The representation of the Park model
@@ -49,19 +53,24 @@ const parkSchema = new mongoose.Schema({
         lowercase: true,
         trim: true,
     },
-    type: {
+    parkType: {
         type: String,
         required: [true, 'Please provide your parking type.'],
         validate: {
             validator: function (string) {
-                return parkType(string).isParkType;
+                return ['indoor', 'outdoor'].includes(string);
             },
-            message: 'Please provide a valid phone number.',
+            message: 'Please provide a valid parking type ("indoor" or "outdoor").',
         },
+    },
+    isOccupied: {
+        type: Boolean,
+        default: false,
+        select: false,
     },
     price: {
         type: String,
-        required: [true, "Please provide a value, even if it is for free."],
+        required: [true, "Please provide a value, even if it is for free put 0."],
         unique: false,
         lowercase: true,
         trim: true,
@@ -84,31 +93,17 @@ const parkSchema = new mongoose.Schema({
         lowercase: true,
         trim: true,
     },
-    provider: {
-        type: String,
-        required: true,
-        unique: false,
-        lowercase: true,
-        trim: true,
+    username: {
+        type: Schema.ObjectId,
+        ref: 'User'
     },
     phone: {
-        type: String,
-        required: [true, 'Please provide your phone number.'],
-        unique: [true, 'The provided phone number is not available.'],
-        validate: {
-            validator: function (number) {
-                return phone(number).isValid;
-            },
-            message: 'Please provide a valid phone number.',
-        },
+        type: Schema.ObjectId,
+        ref: 'User'
     },
     email: {
-        type: String,
-        required: [true, 'Please provide your email.'],
-        unique: true,
-        validate: [isEmail, 'Please provide a valid email address.'],
-        lowercase: true,
-        trim: true,
+        type: Schema.ObjectId,
+        ref: 'User'
     },
     photo: {
         type: String,
@@ -126,7 +121,7 @@ const parkSchema = new mongoose.Schema({
  * Function used to generate the absolute path location of the profile picture of an user before sending it back to the client that requested it.
  */
 parkSchema.methods.generateFileAbsolutePath = function () {
-    if (this.photo) this.photo = `${BACKEND_URL}/${PARK_FOLDER}/${this.photo}`;
+    if (this.photo) this.photo = `${BACKEND_URL}/${USERS_FOLDER}/${this.photo}`;
 };
 
 /**
