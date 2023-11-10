@@ -112,12 +112,12 @@ exports.deleteUser = catchAsync(
    * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
    */
   async (req, res, next) => {
-    //1) Get the id of the user we want to delete
+    //1) get the id of the user we want to delete
     const {
       params: { id },
     } = req;
 
-    //2) Retrieve him from the database
+    //2) retrieve him from the database
     const user = await User.findById(id);
 
     //3) check if the user wasn't found
@@ -128,17 +128,15 @@ exports.deleteUser = catchAsync(
       return;
     }
 
-    // 4) check if the user is an admin
+    //4) check if the user is an admin
     if (user.role === 'admin') {
       next(new AppError("You can't delete an admin user.", 403));
       return;
     }
 
-    // delete the user
+    //5) delete the user
     await User.findByIdAndDelete(id);
 
-    // If the user was successfully deleted, you can send a success response
-    // N.B. : it is a practice to not send any content back
     res.status(204).json({
       status: 'success',
     });
