@@ -2,57 +2,116 @@
  * Functions related to calling the thingy resource in the API
  * @module thingyController
  */
-const { Request, Response, NextFunction, query } = require('express');
 const { catchAsync } = require('../utils/utils');
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
+const axios = require('axios');
 
-const influxClient = new InfluxDB({
-  url: process.env.INFLUX_URL,
-  token: process.env.INFLUX_TOKEN,
+class Influx {
+  constructor(orgName, bucketName, batchOptions) {
+    this.orgName = orgName;
+    this.bucketName = bucketName;
+    this.batchOptions = batchOptions;
+    this.client = new InfluxDB({
+      url: process.env.INFLUX_URL,
+      token: process.env.INFLUX_TOKEN,
+    });
+    this.queryClient = this.client.getQueryApi(this.orgName);
+    this.writeClient = this.client.getWriteApi(
+      this.orgName,
+      this.bucketName,
+      'ms',
+      this.batchOptions,
+    );
+  }
+
+  async getRetentionPolicy() {
+    try {
+      const response = await axios.get('http://localhost:8086/api/v2/buckets', {
+        headers: {
+          Authorization: `Token ${process.env.INFLUX_TOKEN}`,
+        },
+      });
+
+      const buckets = response.data.buckets;
+
+      if (buckets && buckets.length > 0) {
+        const pnsBucket = buckets.find(bucket => bucket.name === 'pnsBucket');
+        const retentionRule = pnsBucket.retentionRules[0];
+
+        if (retentionRule && retentionRule.type === 'expire') {
+          const seconds = retentionRule.everySeconds;
+          const unit = seconds >= 86400 ? 'd' : 'h'; // Adjust as needed
+
+          const value = unit === 'd' ? seconds / 86400 : seconds / 3600;
+          return { value, unit };
+        }
+      }
+
+      // Return a default value or handle the case where no bucket or retention rule is found
+      return { value: 0, unit: 'h' };
+    } catch (error) {
+      console.error('Error fetching buckets:', error);
+      // Handle the error or return a default value
+      return { value: 0, unit: 'h' };
+    }
+  }
+}
+
+// Usage example:
+const influx = new Influx('pnsOrg', 'pnsBucket', {
+  flushInterval: 1000,
+  batchSize: 10,
 });
 
-// Define batch options
-const batchOptions = {
-  flushInterval: 1000, // Adjust this interval as needed (in milliseconds)
-  batchSize: 10, // Adjust this batch size as needed
-};
-
-const influxQueryClient = influxClient.getQueryApi('pnsOrg');
-const influxWriteClient = influxClient.getWriteApi(
-  'pnsOrg',
-  'pnsBucket',
-  'ms',
-  batchOptions,
-);
+// Example of calling getRetentionPolicy
+influx.getRetentionPolicy().then(retentionPolicy => {
+  console.log('RetentionPolicy:', JSON.stringify(retentionPolicy, null, 2));
+});
 
 const thingDescription = {
   id: 'https://127.0.0.1/things/thingy91',
   title: 'Nordic Thingy:91',
   description: 'A WoT-connected Thingy:91 sensor',
   properties: {
-    temperature: {
+    TEMP: {
       title: 'Temperature',
       type: 'number',
       unit: 'degree celsius',
       readOnly: true,
       description: 'A measurement of ambient temperature',
-      links: [{ href: '/things/thingy91/properties/temperature' }],
+      links: [{ href: '/things/thingy91/properties/TEMP' }],
     },
-    humidity: {
+    HUMID: {
       title: 'Humidity',
       type: 'number',
       unit: 'percent',
       readOnly: true,
       description: 'A measurement of ambient humidity',
-      links: [{ href: '/things/thingy91/properties/humidity' }],
+      links: [{ href: '/things/thingy91/properties/HUMID' }],
     },
-    airPressure: {
+    AIR_PRESS: {
       title: 'Air Pressure',
       type: 'number',
       unit: 'kPa',
       readOnly: true,
       description: 'A measurement of ambient air pressure',
-      links: [{ href: '/things/thingy91/properties/airPressure' }],
+      links: [{ href: '/things/thingy91/properties/AIR_PRESS' }],
+    },
+    AIR_QUAL: {
+      title: 'Air Quality',
+      type: 'number',
+      unit: 'AQI',
+      readOnly: true,
+      description: 'A measurement of ambient air quality',
+      links: [{ href: '/things/thingy91/properties/AIR_QUAL' }],
+    },
+    CO2_EQUIV: {
+      title: 'CO2 Equivalent',
+      type: 'number',
+      unit: 'MMTCDE',
+      readOnly: true,
+      description: 'A measurement of ambient CO2 equivalent',
+      links: [{ href: '/things/thingy91/properties/CO2_EQUIV' }],
     },
 
     events: {
@@ -75,22 +134,21 @@ const thingDescription = {
 function publishToMQTT(mqttClient, topic, message, res) {
   mqttClient.publish(topic, message, error => {
     if (error) {
-      console.error('Error publishing message:', error);
+      console.error(`Error publishing message: ${message} -> ${error}`);
     } else {
       console.log('Successfully published the following message: ', message);
+      res.status(200).json({
+        status: 'success',
+        data: { message },
+      });
     }
-  });
-
-  res.status(200).json({
-    status: 'success',
-    data: { message },
   });
 }
 
 function sendQueryResults(res, fluxQuery) {
   const result = [];
 
-  influxQueryClient.queryRows(fluxQuery, {
+  influx.queryClient.queryRows(fluxQuery, {
     next: (row, tableMeta) => {
       const rowObject = tableMeta.toObject(row);
       result.push(rowObject);
@@ -110,11 +168,11 @@ function sendQueryResults(res, fluxQuery) {
   });
 }
 
-function getQueryRows(res, fluxQuery) {
+function getQueryRows(fluxQuery) {
   return new Promise((resolve, reject) => {
     let result = [];
 
-    influxQueryClient.queryRows(fluxQuery, {
+    influx.queryClient.queryRows(fluxQuery, {
       next: (row, tableMeta) => {
         const rowObject = tableMeta.toObject(row);
         result.push(rowObject);
@@ -129,16 +187,14 @@ function getQueryRows(res, fluxQuery) {
   });
 }
 
-exports.deleteButtonData = catchAsync(async (req, res, next) => {});
-
 exports.getButtonTimer = catchAsync(async (req, res, next) => {
-  const fluxQuery = `from(bucket: "pnsBucket")
+  const getLastTwoRowsQuery = `from(bucket: "pnsBucket")
   |> range(start: -1d)
   |> filter(fn: (r) => r._measurement == "thingy91" and r._field == "BUTTON" and r._value == 0)
   |> sort(columns: ["_time"], desc: true)
   |> limit(n: 2)`;
 
-  const countedFluxQuery = `from(bucket: "pnsBucket")
+  const getCountQuery = `from(bucket: "pnsBucket")
   |> range(start: -1d)
   |> filter(fn: (r) => r._measurement == "thingy91" and r._field == "BUTTON")
   |> group(columns: ["_field"])
@@ -148,21 +204,21 @@ exports.getButtonTimer = catchAsync(async (req, res, next) => {
   let countResult = [];
 
   try {
-    rows = await getQueryRows(res, fluxQuery);
+    rows = await getQueryRows(getLastTwoRowsQuery);
   } catch (error) {
     res.status(500).json({
       status: 'error',
-      message: `Oops, something went wrong with the following query: ${fluxQuery}`,
+      message: `Oops, something went wrong with the following query: ${getLastTwoRowsQuery}`,
     });
     return;
   }
 
   try {
-    countResult = await getQueryRows(res, countedFluxQuery);
+    countResult = await getQueryRows(getCountQuery);
   } catch (error) {
     res.status(500).json({
       status: 'error',
-      message: `Oops, something went wrong with the following query: ${countedFluxQuery}`,
+      message: `Oops, something went wrong with the following query: ${getCountQuery}`,
     });
     return;
   }
@@ -289,7 +345,7 @@ exports.addFloatProperty = async message => {
     .floatField(message.appId, message.data)
     .timestamp(new Date().getTime());
 
-  influxWriteClient.writePoint(point);
+  influx.writeClient.writePoint(point);
 };
 
 exports.addIntegerProperty = async message => {
@@ -297,7 +353,7 @@ exports.addIntegerProperty = async message => {
     .intField(message.appId, message.data)
     .timestamp(new Date().getTime());
 
-  influxWriteClient.writePoint(point);
+  influx.writeClient.writePoint(point);
 };
 
 exports.setBuzzer = catchAsync(async (req, res, next) => {
