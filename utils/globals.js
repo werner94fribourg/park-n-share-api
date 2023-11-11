@@ -3,6 +3,8 @@
  * @module globals
  */
 
+const Influx = require('../utils/classes/Influx');
+
 /**
  * Base URL of the API.
  * @type {string}
@@ -32,3 +34,5 @@ exports.INFLUX_TOKEN =
   '62YhERKnAWyPd59PYO3aS0rCnQlY4pdynwpM_Bl7-AJqjGcksfPZW8FjHjnePGiMlYTiWrePPl_Uqqg18d_WaQ==';
 exports.INFLUX_ORG = 'pnsOrg';
 exports.INFLUX_BUCKET = 'pnsBucket';
+
+exports.INFLUX = new Influx('pnsOrg', 'pnsBucket');

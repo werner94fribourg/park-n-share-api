@@ -62,6 +62,11 @@ const router = Router();
  *                         $ref: '#/components/schemas/User'
  */
 router.route('/').get(getThingDescription);
+
+/**
+ * @swagger
+ * /thingy/
+ */
 router.route('/properties/:property').get(getProperty);
 router.route('/properties/BUTTON/timer').get(getButtonTimer);
 router

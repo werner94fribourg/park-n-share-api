@@ -33,6 +33,10 @@ const options = {
         name: 'User',
         description: 'All operations related to user management.',
       },
+      {
+        name: 'Thingy',
+        description: 'All operations related to thingy management',
+      },
     ],
     components: {
       securitySchemes: {

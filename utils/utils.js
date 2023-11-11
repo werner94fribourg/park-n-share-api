@@ -7,6 +7,8 @@ const { Connection } = require('mongoose');
 const mongoose = require('mongoose');
 const { Response } = require('express');
 const AppError = require('./classes/AppError');
+const { Point } = require('@influxdata/influxdb-client');
+const { INFLUX } = require('./globals');
 
 /**
  * Function used to handle mongoose invalid requests generating CastError.
@@ -125,4 +127,104 @@ exports.shutDownAll = async (server, dbConnection, message, error) => {
  */
 exports.catchAsync = fn => (req, res, next) => {
   fn(req, res, next).catch(err => next(err));
+};
+
+exports.publishToMQTT = (mqttClient, topic, message, res) => {
+  mqttClient.publish(topic, message, error => {
+    if (error) {
+      console.error(`Error publishing message: ${message} -> ${error}`);
+    } else {
+      console.log('Successfully published the following message: ', message);
+      res.status(200).json({
+        status: 'success',
+        data: { message },
+      });
+    }
+  });
+};
+
+exports.sendQueryResults = (res, fluxQuery) => {
+  const result = [];
+
+  INFLUX.queryClient.queryRows(fluxQuery, {
+    next: (row, tableMeta) => {
+      const rowObject = tableMeta.toObject(row);
+      result.push(rowObject);
+    },
+    error: error => {
+      res.status(500).json({
+        status: 'error',
+        message: `An error occurred while fetching data: ${error}`,
+      });
+    },
+    complete: () => {
+      res.status(200).json({
+        status: 'success',
+        data: result,
+      });
+    },
+  });
+};
+
+exports.getQueryRows = fluxQuery => {
+  return new Promise((resolve, reject) => {
+    let result = [];
+
+    INFLUX.queryClient.queryRows(fluxQuery, {
+      next: (row, tableMeta) => {
+        const rowObject = tableMeta.toObject(row);
+        result.push(rowObject);
+      },
+      error: error => {
+        reject(`An error occurred while fetching data: ${error}`);
+      },
+      complete: () => {
+        resolve(result);
+      },
+    });
+  });
+};
+
+exports.addFloatProperty = async message => {
+  let point = new Point('thingy91')
+    .floatField(message.appId, message.data)
+    .timestamp(new Date().getTime());
+
+  INFLUX.writeClient.writePoint(point);
+};
+
+exports.addIntegerProperty = async message => {
+  if (message.data == '1') {
+    let point = new Point('thingy91')
+      .intField(message.appId, message.data)
+      .timestamp(new Date().getTime());
+
+    INFLUX.writeClient.writePoint(point);
+    console.log('Added: ', JSON.stringify(message, null, 2));
+  }
+};
+
+exports.constructBasicPropertyQuery = (
+  bucket,
+  interval,
+  measurement,
+  field,
+) => {
+  return `from(bucket: "${bucket}")
+  |> range(start: -${interval})
+  |> filter(fn: (r) => r._measurement == "${measurement}" and r._field == "${field}")`;
+};
+
+exports.constructStatisticalQueryOnProperty = (
+  bucket,
+  interval,
+  measurement,
+  field,
+  statistic,
+) => {
+  return `from(bucket: "${bucket}")
+  |> range(start: -${interval})
+  |> filter(fn: (r) => r._measurement == "${measurement}" and r._field == "${field}")
+  |> group(columns: ["_field"])
+  |> ${statistic}()`;
 };
