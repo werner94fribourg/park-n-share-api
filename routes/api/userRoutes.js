@@ -751,7 +751,7 @@ router.route('/forgot-password').post(forgotPassword);
  *                 value:
  *                   status: fail
  *                   message: Invalid input data.
- *                   fields: [password: Please provide a valid email password.]
+ *                   fields: [password: Please provide a valid password.]
  *               invalidResetLinkExample:
  *                 summary: Invalid reset link (confirmation time expired or inexistant token)
  *                 value:
