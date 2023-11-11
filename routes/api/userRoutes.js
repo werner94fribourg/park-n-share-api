@@ -554,6 +554,27 @@ router.route('/confirm-email/:confToken').patch(confirmEmail);
  *                   type: string
  *                   description: The success password update message
  *                   example: Password successfully updated.
+ *       400:
+ *         description: Incorrect field validation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: fail
+ *                 message:
+ *                   type: string
+ *                   example: Invalid input data.
+ *                 fields:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       password:
+ *                         type: string
+ *                         example: Please provide a valid password.
  *       401:
  *         description: User login problems
  *         content:
@@ -668,27 +689,6 @@ router.route('/forgot-password').post(forgotPassword);
  *                     valid:
  *                       type: boolean
  *                       example: false
- *       400:
- *         description: Incorrect field validation
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: fail
- *                 message:
- *                   type: string
- *                   example: Invalid input data.
- *                 fields:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       password:
- *                         type: string
- *                         example: Please provide a valid password.
  *       500:
  *         description: Internal Server Error
  *         content:
@@ -742,18 +742,21 @@ router.route('/forgot-password').post(forgotPassword);
  *                   type: string
  *                   example: Password successfully changed!
  *       400:
- *         description: Invalid reset link (confirmation time expired or inexistant token)
+ *         description: Incorrect link or field validation
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: fail
- *                 message:
- *                   type: string
- *                   example: The link is invalid or has expired.
+ *             examples:
+ *               invalidInputExample:
+ *                 summary: Incorrect field validation
+ *                 value:
+ *                   status: fail
+ *                   message: Invalid input data.
+ *                   fields: [password: Please provide a valid email password.]
+ *               invalidResetLinkExample:
+ *                 summary: Invalid reset link (confirmation time expired or inexistant token)
+ *                 value:
+ *                   status: fail
+ *                   message: The link is invalid or has expired.
  *       500:
  *         description: Internal Server Error
  *         content:
