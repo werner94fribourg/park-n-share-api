@@ -397,10 +397,7 @@ exports.changePassword = catchAsync(
 
     // check if the posted current password is correct
     if (
-      !(await user.password.correctPassword(
-        req.body.passwordCurrent,
-        user.password,
-      ))
+      !(await user.correctPassword(req.body.passwordCurrent, user.password))
     ) {
       next(new AppError('Your current password is wrong.', 401));
       return;
