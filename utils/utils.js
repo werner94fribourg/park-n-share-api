@@ -129,6 +129,14 @@ exports.catchAsync = fn => (req, res, next) => {
   fn(req, res, next).catch(err => next(err));
 };
 
+/**
+ * Publishes a message to an MQTT topic and sends a response.
+ * @param {import('mqtt').Client} mqttClient - The MQTT client to publish the message.
+ * @param {string} topic - The MQTT topic to which the message will be published.
+ * @param {string} message - The message to publish.
+ * @param {import('express').Response} res - The response object to send a status back to the client.
+ * @function
+ */
 exports.publishToMQTT = (mqttClient, topic, message, res) => {
   mqttClient.publish(topic, message, error => {
     if (error) {
@@ -143,6 +151,12 @@ exports.publishToMQTT = (mqttClient, topic, message, res) => {
   });
 };
 
+/**
+ * Sends query results from InfluxDB to the client.
+ * @param {import('express').Response} res - The response object to send data back to the client.
+ * @param {string} fluxQuery - The Flux query to execute.
+ * @function
+ */
 exports.sendQueryResults = (res, fluxQuery) => {
   const result = [];
 
@@ -166,6 +180,12 @@ exports.sendQueryResults = (res, fluxQuery) => {
   });
 };
 
+/**
+ * Retrieves query rows from InfluxDB as a promise.
+ * @param {string} fluxQuery - The Flux query to execute.
+ * @returns {Promise<Array>} A promise that resolves to an array of query results.
+ * @function
+ */
 exports.getQueryRows = fluxQuery => {
   return new Promise((resolve, reject) => {
     let result = [];
@@ -185,46 +205,84 @@ exports.getQueryRows = fluxQuery => {
   });
 };
 
-exports.addFloatProperty = async message => {
+/**
+ * Adds a float property to the InfluxDB with the tag corresponding to the deviceId.
+ * @param {Object} message - The MQTT message containing the property information.
+ * @function
+ */
+exports.addFloatProperty = async (deviceId, message) => {
   let point = new Point('thingy91')
+    .tag('device', deviceId)
     .floatField(message.appId, message.data)
     .timestamp(new Date().getTime());
 
   INFLUX.writeClient.writePoint(point);
 };
 
-exports.addIntegerProperty = async message => {
+/**
+ * Adds an integer property to the InfluxDB with the tag corresponding to the deviceId.
+ * @param {Object} message - The MQTT message containing the property information.
+ * @function
+ */
+exports.addIntegerProperty = async (deviceId, message) => {
   if (message.data == '1') {
     let point = new Point('thingy91')
+      .tag('device', deviceId)
       .intField(message.appId, message.data)
       .timestamp(new Date().getTime());
 
     INFLUX.writeClient.writePoint(point);
-    console.log('Added: ', JSON.stringify(message, null, 2));
+    console.log(
+      `Added to tag ${deviceId} the following data: `,
+      JSON.stringify(message, null, 2),
+    );
   }
 };
 
+/**
+ * Constructs a basic Flux query for retrieving property data from InfluxDB.
+ * @param {string} bucket - The InfluxDB bucket.
+ * @param {string} interval - The time interval for the query.
+ * @param {string} measurement - The measurement (e.g., 'thingy91').
+ * @param {string} deviceId - The device ID to filter data by.
+ * @param {string} field - The field (e.g., 'TEMP').
+ * @returns {string} The constructed Flux query.
+ * @function
+ */
 exports.constructBasicPropertyQuery = (
   bucket,
   interval,
   measurement,
+  deviceId,
   field,
 ) => {
   return `from(bucket: "${bucket}")
   |> range(start: -${interval})
-  |> filter(fn: (r) => r._measurement == "${measurement}" and r._field == "${field}")`;
+  |> filter(fn: (r) => r._measurement == "${measurement}" and r._field == "${field}" and r.device == "${deviceId}")`;
 };
 
+/**
+ * Constructs a statistical Flux query for property data from InfluxDB.
+ * @param {string} bucket - The InfluxDB bucket.
+ * @param {string} interval - The time interval for the query.
+ * @param {string} measurement - The measurement (e.g., 'thingy91').
+ * @param {string} deviceId - The device ID to filter data by.
+ * @param {string} field - The field (e.g., 'TEMP').
+ * @param {string} statistic - The statistical function (e.g., 'mean' 'stddev').
+ * @returns {string} The constructed Flux query.
+ * @function
+ */
 exports.constructStatisticalQueryOnProperty = (
   bucket,
   interval,
   measurement,
+  deviceId,
   field,
   statistic,
 ) => {
   return `from(bucket: "${bucket}")
   |> range(start: -${interval})
-  |> filter(fn: (r) => r._measurement == "${measurement}" and r._field == "${field}")
+  |> filter(fn: (r) => r._measurement == "${measurement}" and r._field == "${field}" and r.device == "${deviceId}")
   |> group(columns: ["_field"])
   |> ${statistic}()`;
 };

@@ -25,16 +25,17 @@ exports.getButtonTimer = catchAsync(
    * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
    * @returns {Promise<Object|null>} A promise that resolves to the timer object or null if an error occurs. If you are using async/await, you can directly await this function to get the result.
    */
-  async (_, res, next) => {
+  async (req, res, next) => {
+    const deviceId = req.params.thingyId;
     const getLastTwoRowsQuery = `from(bucket: "pnsBucket")
   |> range(start: -1d)
-  |> filter(fn: (r) => r._measurement == "thingy91" and r._field == "BUTTON")
+  |> filter(fn: (r) => r._measurement == "thingy91" and r._field == "BUTTON" and r.device == "${deviceId}")
   |> sort(columns: ["_time"], desc: true)
   |> limit(n: 2)`;
 
     const getCountQuery = `from(bucket: "pnsBucket")
   |> range(start: -1d)
-  |> filter(fn: (r) => r._measurement == "thingy91" and r._field == "BUTTON")
+  |> filter(fn: (r) => r._measurement == "thingy91" and r._field == "BUTTON" and r.device == "${deviceId}")
   |> group(columns: ["_field"])
   |> count()`;
 
@@ -46,7 +47,7 @@ exports.getButtonTimer = catchAsync(
     } catch (error) {
       next(
         new AppError(
-          `Oops, something went wrong with the following query: ${getLastTwoRowsQuery}`,
+          `Oops, something went wrong with the following query: ${getLastTwoRowsQuery}. Error: ${error}`,
           500,
         ),
       );
@@ -58,7 +59,7 @@ exports.getButtonTimer = catchAsync(
     } catch (error) {
       next(
         new AppError(
-          `Oops, something went wrong with the following query: ${getCountQuery}`,
+          `Oops, something went wrong with the following query: ${getCountQuery}. Error: ${error}`,
           500,
         ),
       );
@@ -84,6 +85,8 @@ exports.getButtonTimer = catchAsync(
         rows = [rows[0]];
       }
     }
+
+    //console.log('Count: ', count, 'Nb rows: ', rows.length);
 
     if (!rows) {
       next(
@@ -169,10 +172,12 @@ exports.getProperty = catchAsync(
   async (req, res, _) => {
     const interval = req.query.interval || '30m'; // Default interval is 30min
     const property = req.params.property;
+    const deviceId = req.params.thingyId;
     let fluxQuery = constructBasicPropertyQuery(
       'pnsBucket',
       interval,
       'thingy91',
+      deviceId,
       property,
     );
     sendQueryResults(res, fluxQuery);
@@ -190,10 +195,12 @@ exports.getStatisticOfProperty = catchAsync(
     const interval = req.query.interval || '1h'; // Default interval is 1h
     const property = req.params.property;
     const statistic = req.params.statistic;
+    const deviceId = req.params.thingyId;
     let fluxQuery = constructStatisticalQueryOnProperty(
       'pnsBucket',
       interval,
       'thingy91',
+      deviceId,
       property,
       statistic,
     );
@@ -211,7 +218,8 @@ exports.setBuzzer = catchAsync(
   async (req, res, _) => {
     let freq = +req.query.freq || 1000;
     const setting = req.params.setting;
-    const topic = 'things/blue-1/shadow/update/accepted';
+    const deviceId = req.params.thingyId;
+    const topic = `things/${deviceId}/shadow/update/accepted`;
 
     if (setting == 'off') {
       freq = 0;
@@ -236,7 +244,8 @@ exports.setLEDColor = catchAsync(
    */
   async (req, res, _) => {
     let colorToBeSet = req.params.color || 'red';
-    const topic = 'things/blue-1/shadow/update/accepted';
+    const deviceId = req.params.thingyId;
+    const topic = `things/${deviceId}/shadow/update/accepted`;
 
     if (colorToBeSet == 'blue') {
       colorToBeSet = '0000ff';

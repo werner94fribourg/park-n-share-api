@@ -14,6 +14,6 @@ const thingyRouter = require('./api/thingyRoutes');
 const router = Router();
 
 router.use('/users', userRouter);
-router.use('/things/thingy91', thingyRouter);
+router.use('/things', thingyRouter);
 
 module.exports = router;
