@@ -50,9 +50,12 @@ exports.getUser = catchAsync(
   async (req, res, next) => {
     const {
       params: { id },
+      self,
     } = req;
 
-    const user = await User.findById(id);
+    const selectFields = self ? '+role +isEmailConfirmed' : '';
+
+    const user = await User.findById(id).select(selectFields);
 
     if (!user) {
       next(
