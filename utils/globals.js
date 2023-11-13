@@ -33,6 +33,11 @@ exports.IMG_FOLDER = exports.PUBLIC_FOLDER + '/img';
 exports.USERS_FOLDER = exports.IMG_FOLDER + '/users';
 
 /**
+ * File path of the parking slots (i.e. parking slot images) static directory.
+ */
+exports.PARKINGS_FOLDER = exports.IMG_FOLDER + '/parkings';
+
+/**
  * Base URL of the frontend application.
  * @type {string}
  */

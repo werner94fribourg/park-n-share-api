@@ -1,6 +1,6 @@
 /**
- * Definition of the Park Model used in the application and generating the Park Collection in the MongoDB Database.
- * @module userModel
+ * Definition of the Parking Model used in the application and generating the Park Collection in the MongoDB Database.
+ * @module parkingModel
  */
 
 const {mongoose, Schema} = require('mongoose');
@@ -10,20 +10,23 @@ const {
 } = require('../utils/globals');
 
 /**
- * The representation of the Park model
- * @typedef Park
+ * The representation of the Parking model
+ * @typedef Parking
  * @property {string} title The title of the parking slot.
  * @property {string} description The description of the parking slot.
- * @property {string} parkType The parking slot type, can be .
- * @property {string} username The username of the user.
- * @property {string} email The email of the user.
- * @property {string} phone The phone number of the user.
- * @property {string} photo The picture related to the parking slot
+ * @property {string} parkType The parking slot type, can be 'indoor' or 'outdoor'.
+ * @property {boolean} isOccupied The parking occupation, states whether it is currently occupied or not.
+ * @property {boolean} isPending The parking slot status, states whether it has been published or not.
+ * @property {number} price The parking slot type, can be 'indoor' or 'outdoor'.
+ * @property {Date} date The parking slot publication date.
+ * @property {string} location The parking slot location.
+ * @property {object} owner The user related attributes which the parking slot will be populated with.
+ * @property {string} photo The parking slot photos.
  */
 
 /**
  * The park schema object generated from mongoose.
- * @type {mongoose.Schema<Park>}
+ * @type {mongoose.Schema<Parking>}
  */
 const parkSchema = new mongoose.Schema({
     title: {
@@ -100,8 +103,8 @@ parkSchema.methods.generateFileAbsolutePath = function () {
 
 /**
  * The Park model object generated from mongoose.
- * @type {mongoose.Model<Park>}
+ * @type {mongoose.Model<Parking>}
  */
-const Park = mongoose.model('Park', parkSchema);
+const Parking = mongoose.model('Parking', parkSchema);
 
-module.exports = Park;
+module.exports = Parking;

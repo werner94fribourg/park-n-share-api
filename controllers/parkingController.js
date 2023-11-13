@@ -1,9 +1,8 @@
 const {catchAsync} = require("../utils/utils");
-const Park = require("../models/parkModel");
-// const User = require("../models/userModel");
+const Park = require("../models/parkingModel");
 
 
-exports.getAllParkings = catchAsync(
+exports.handleParkingQuery = catchAsync(
     /**
      * Function used to handle all type of queries related to the get parking slots
      * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
@@ -14,9 +13,6 @@ exports.getAllParkings = catchAsync(
         const query = {};
         const validParkTypes = ['indoor', 'outdoor'];
 
-        // ToDo: add checkers for existing query
-        // ToDo: add handler for the checks to follow pipeline (see route too) with next()
-        // ToDo: park -> parking
         if (req.query.isOccupied) {
             query.isOccupied = false;
         }
@@ -26,9 +22,9 @@ exports.getAllParkings = catchAsync(
         }
 
         if (req.query.minPrice && req.query.maxPrice) {
-            query.price = { $gte: parseFloat(req.query.minPrice), $lte: parseFloat(req.query.maxPrice) };
+            query.price = {$gte: parseFloat(req.query.minPrice), $lte: parseFloat(req.query.maxPrice)};
         } else if (req.query.minPrice) {
-            query.price = { $gte: parseFloat(req.query.minPrice) };
+            query.price = {$gte: parseFloat(req.query.minPrice)};
         } else if (req.query.maxPrice) {
             query.price = {$lte: parseFloat(req.query.maxPrice)};
         }
@@ -37,32 +33,36 @@ exports.getAllParkings = catchAsync(
             query.parkType = req.query.parkType;
         }
 
-        await getAllParks(query, res);
-
         next();
     },
 );
 
+exports.getAllParkings = catchAsync(
+    /**
+     * Function used to process queries and populate the response with such filters
+     * @param query All queries used to output a specific response to the filters given by the queries
+     * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+     */
+    async (query, res) => {
+        try {
+            const parks = await Park.find(query).populate({
+                path: 'Owner',
+                select: 'username phone email',
+            });
 
-const getAllParks = async (query, res) => {
-    try {
-        const parks = await Park.find(query).populate({
-            path: 'Owner',
-            select: 'username phone email',
-        });
+            parks.forEach(park => {
+                park.generateFileAbsolutePath();
+            });
 
-        parks.forEach(park => {
-            park.generateFileAbsolutePath();
-        });
-
-        res.status(200).json({
-            status: 'success',
-            data: { parks },
-        });
-    } catch (error) {
-        res.status(404).json({
-            status: 'error',
-            message: 'Query not found',
-        });
+            res.status(200).json({
+                status: 'success',
+                data: {parks},
+            });
+        } catch (error) {
+            res.status(404).json({
+                status: 'error',
+                message: 'Query not found',
+            });
+        }
     }
-};
+);
