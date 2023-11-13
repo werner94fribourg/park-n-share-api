@@ -48,8 +48,27 @@ exports.FRONTEND_URL = 'http://localhost:3000';
 
 /**
  * Base URL of the backend application.
+ * @type {string}
  */
 exports.BACKEND_URL = 'http://localhost:3001';
+
+/**
+ * Base URL of the GEOAPI
+ * @type {string}
+ */
+exports.GEOAPI_URL = 'https://api.geoapify.com/v1/geocode';
+
+/**
+ * Search URL of GEOAPI, used to find the coordinates for a specific address
+ * @type {string}
+ */
+exports.GEOAPI_SEARCH_URL = exports.GEOAPI_URL + '/search';
+
+/**
+ * Reverse URL of GEOAPI, used to find an address for given coordinates
+ * @type {string}
+ */
+exports.GEOAPI_REVERSE_URL = exports.GEOAPI_URL + '/reverse';
 
 /**
  * List of url parameters that can happen multiple times.
