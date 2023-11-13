@@ -47,7 +47,7 @@ exports.getAllParkings = catchAsync(
 const getAllParks = async (query, res) => {
     try {
         const parks = await Park.find(query).populate({
-            path: 'User',
+            path: 'Owner',
             select: 'username phone email',
         });
 
@@ -60,7 +60,6 @@ const getAllParks = async (query, res) => {
             data: { parks },
         });
     } catch (error) {
-        // Handle errors
         res.status(404).json({
             status: 'error',
             message: 'Query not found',

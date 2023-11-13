@@ -3,33 +3,22 @@
  * @module userModel
  */
 
-const { mongoose, Schema } = require('mongoose');
+const {mongoose, Schema} = require('mongoose');
 const {
-    USERS_FOLDER,
+    PARKINGS_FOLDER,
     BACKEND_URL,
 } = require('../utils/globals');
 
 /**
  * The representation of the Park model
  * @typedef Park
+ * @property {string} title The title of the parking slot.
+ * @property {string} description The description of the parking slot.
+ * @property {string} parkType The parking slot type, can be .
  * @property {string} username The username of the user.
  * @property {string} email The email of the user.
  * @property {string} phone The phone number of the user.
- * @property {string} photo The profile picture of the user.
- * @property {string} password The password of the user.
- * @property {string} passwordConfirm The password confirmation of the user, which will not be stored in the database.
- * @property {string} role The role of the user.
- * @property {Date} passwordChangedAt The last moment where the user changed his password.
- * @property {string} passwordResetToken The hashed email reset token, generated in the reset email sent to the user when he has forgotten his password.
- * @property {Date} passwordResetExpires The expiration time of the reset email validity.
- * @property {boolean} isConfirmed The confirmation status of the user.
- * @property {string} pinCode The hashed pin code sent to the user when he's trying to connect / register.
- * @property {Date} pinCodeExpires The expiration time of the pin code validity.
- * @property {boolean} isEmailConfirmed The confirmation status of the email address.
- * @property {string} confirmEmailToken The hashed email confirmation token, generated in the confirmation email sent to the user.
- * @property {Date} confirmEmailExpires The expiration time of the confirmation email validity.
- * @property {boolean} isDeactivated The activation status of the account.
- * @property {Date} isDeactivatedAt The deactivation date of the account.
+ * @property {string} photo The picture related to the parking slot
  */
 
 /**
@@ -56,20 +45,21 @@ const parkSchema = new mongoose.Schema({
     parkType: {
         type: String,
         required: [true, 'Please provide your parking type.'],
-        validate: {
-            validator: function (string) {
-                return ['indoor', 'outdoor'].includes(string);
-            },
-            message: 'Please provide a valid parking type ("indoor" or "outdoor").',
-        },
+        enum: ['indoor', 'outdoor'],
+        default: 'outdoor'
     },
     isOccupied: {
         type: Boolean,
         default: false,
         select: false,
     },
+    isPending: {
+        type: Boolean,
+        default: true,
+        select: false,
+    },
     price: {
-        type: String,
+        type: Number,
         required: [true, "Please provide a value, even if it is for free put 0."],
         unique: false,
         lowercase: true,
@@ -80,48 +70,32 @@ const parkSchema = new mongoose.Schema({
         select: false,
     },
     location: {
-        type: String,
-        required: [true, 'Please provide the city in which your parking slot is located.'],
-        unique: false,
-        lowercase: true,
-        trim: true,
+        type: {
+            type: String,
+            default: 'Point',
+            enum: ['Point']
+        },
+        coordinates: [Number],
+        city: String,
+        address: String
     },
-    address: {
-        type: String,
-        required: [true, 'Please provide the address in which your parking slot is located.'],
-        unique: false,
-        lowercase: true,
-        trim: true,
+    owner: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'User'
     },
-    username: {
-        type: Schema.ObjectId,
-        ref: 'User'
-    },
-    phone: {
-        type: Schema.ObjectId,
-        ref: 'User'
-    },
-    email: {
-        type: Schema.ObjectId,
-        ref: 'User'
-    },
-    photo: {
-        type: String,
-        trim: true,
-        default: 'defaultPark.jpg',
-    },
-    isPending: {
-        type: Boolean,
-        default: true,
-        select: false,
-    },
+    photos: [
+        {
+            type: String,
+            trim: true,
+        }
+    ],
 });
 
 /**
  * Function used to generate the absolute path location of the profile picture of an user before sending it back to the client that requested it.
  */
 parkSchema.methods.generateFileAbsolutePath = function () {
-    if (this.photo) this.photo = `${BACKEND_URL}/${USERS_FOLDER}/${this.photo}`;
+    if (this.photo) this.photo = `${BACKEND_URL}/${PARKINGS_FOLDER}/${this.photo}`;
 };
 
 /**
