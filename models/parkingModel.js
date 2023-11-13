@@ -1,110 +1,104 @@
 /**
- * Definition of the Parking Model used in the application and generating the Park Collection in the MongoDB Database.
+ * Definition of the Parking Model used in the application and generating the Parking Collection in the MongoDB Database.
  * @module parkingModel
  */
 
-const {mongoose, Schema} = require('mongoose');
-const {
-    PARKINGS_FOLDER,
-    BACKEND_URL,
-} = require('../utils/globals');
+const { mongoose, Schema } = require('mongoose');
+const { PARKINGS_FOLDER, BACKEND_URL } = require('../utils/globals');
 
 /**
  * The representation of the Parking model
  * @typedef Parking
- * @property {string} title The title of the parking slot.
+ * @property {string} name The name of the parking slot.
  * @property {string} description The description of the parking slot.
- * @property {string} parkType The parking slot type, can be 'indoor' or 'outdoor'.
- * @property {boolean} isOccupied The parking occupation, states whether it is currently occupied or not.
- * @property {boolean} isPending The parking slot status, states whether it has been published or not.
- * @property {number} price The parking slot type, can be 'indoor' or 'outdoor'.
- * @property {Date} date The parking slot publication date.
- * @property {string} location The parking slot location.
- * @property {object} owner The user related attributes which the parking slot will be populated with.
- * @property {string} photo The parking slot photos.
+ * @property {string} type The type of the parking slot (indoor / outdoor).
+ * @property {boolean} isOccupied The occupation state of the parking slot.
+ * @property {boolean} isPending The reservation state of the parking slot.
+ * @property {number} price The hourly price of the parking slot.
+ * @property {Date} creationDate The creation date of the parking slot.
+ * @property {Object} location The location (address and coordinates) of the parking slot.
+ * @property {mongoose.Schema.ObjectId} owner The id reference to the owner of the parking slot.
+ * @property {string[]} photos The photos of the parking slot.
  */
 
 /**
- * The park schema object generated from mongoose.
+ * The parking schema object generated from mongoose.
  * @type {mongoose.Schema<Parking>}
  */
-const parkSchema = new mongoose.Schema({
-    title: {
-        type: String,
-        required: [true, 'Please provide parking slot title'],
-        unique: true,
-        trim: true,
-        lowercase: true,
-        maxLength: [30, 'A parking slot title must have less or equal than 15 characters.'],
-        minlength: [4, 'A parking slot title must have at least 4 characters.'],
+const parkingSchema = new Schema({
+  name: {
+    type: String,
+    required: [true, 'Please provide a name to your parking slot.'],
+    trim: true,
+    maxLength: [30, "A parking slot name can't be longer than 30 characters."],
+    minlength: [4, "A parking slot name can't be shorter than 4 characters."],
+  },
+  description: {
+    type: String,
+    trim: true,
+  },
+  type: {
+    type: String,
+    enum: ['indoor', 'outdoor'],
+    default: 'outdoor',
+  },
+  isOccupied: {
+    type: Boolean,
+    default: false,
+    select: false,
+  },
+  isPending: {
+    type: Boolean,
+    default: true,
+    select: false,
+  },
+  price: {
+    type: Number,
+    required: [true, 'Please provide an hourly price for your parking slot.'],
+    unique: false,
+    lowercase: true,
+    trim: true,
+  },
+  creationDate: {
+    type: Date,
+    select: false,
+  },
+  location: {
+    type: {
+      type: String,
+      default: 'Point',
+      enum: ['Point'],
     },
-    description: {
-        type: String,
-        required: false,
-        unique: false,
-        lowercase: true,
-        trim: true,
+    coordinates: [Number],
+    city: String,
+    address: String,
+  },
+  owner: {
+    type: Schema.ObjectId,
+    ref: 'User',
+  },
+  photos: [
+    {
+      type: String,
+      trim: true,
     },
-    parkType: {
-        type: String,
-        required: [true, 'Please provide your parking type.'],
-        enum: ['indoor', 'outdoor'],
-        default: 'outdoor'
-    },
-    isOccupied: {
-        type: Boolean,
-        default: false,
-        select: false,
-    },
-    isPending: {
-        type: Boolean,
-        default: true,
-        select: false,
-    },
-    price: {
-        type: Number,
-        required: [true, "Please provide a value, even if it is for free put 0."],
-        unique: false,
-        lowercase: true,
-        trim: true,
-    },
-    date: {
-        type: Date,
-        select: false,
-    },
-    location: {
-        type: {
-            type: String,
-            default: 'Point',
-            enum: ['Point']
-        },
-        coordinates: [Number],
-        city: String,
-        address: String
-    },
-    owner: {
-      type: mongoose.Schema.ObjectId,
-      ref: 'User'
-    },
-    photos: [
-        {
-            type: String,
-            trim: true,
-        }
-    ],
+  ],
 });
 
 /**
- * Function used to generate the absolute path location of the profile picture of an user before sending it back to the client that requested it.
+ * Function used to generate the absolute path location of the parkings photos of a parking before sending it back to the client that requested it.
  */
-parkSchema.methods.generateFileAbsolutePath = function () {
-    if (this.photo) this.photo = `${BACKEND_URL}/${PARKINGS_FOLDER}/${this.photo}`;
+parkingSchema.methods.generateFileAbsolutePath = function () {
+  if (this.photos)
+    this.photos = this.photos.map(
+      photo => `${BACKEND_URL}/${PARKINGS_FOLDER}/${photo}`,
+    );
 };
 
 /**
- * The Park model object generated from mongoose.
+ * The Parking model object generated from mongoose.
  * @type {mongoose.Model<Parking>}
  */
-const Parking = mongoose.model('Parking', parkSchema);
+const Parking = mongoose.model('Parking', parkingSchema);
 
 module.exports = Parking;
