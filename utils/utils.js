@@ -211,6 +211,15 @@ exports.isBoolean = expr => {
 };
 
 /**
+ * Function used to transform a string representation of true/false into his boolean value.
+ * @param {string} expr The expression in stirng format we want to transform to a boolean value.
+ * @returns {boolean} the boolean representation of the string format.
+ */
+exports.setBoolean = expr => {
+  return expr.toLowerCase() === 'true' ? true : false;
+};
+
+/**
  * Function used to check the boolean validity of a field in a query parameter and throw an error if it is not the case.
  * @param {string} field The field value we want to check if it is a boolean.
  * @param {string} errMessage The error message returned by the route if the field value isn't a boolean.
@@ -237,5 +246,17 @@ exports.checkNumber = (field, errMessage, next) => {
     next(new AppError(errMessage, 400));
     return false;
   }
+  return true;
+};
+
+exports.checkLocation = coordinates => {
+  if (coordinates?.length !== 2) return false;
+
+  const [lat, lng] = coordinates;
+
+  if (typeof lat !== 'number' && Math.abs(lat) > 90) return false;
+
+  if (typeof lng !== 'number' && Math.abs(lng) > 180) return false;
+
   return true;
 };

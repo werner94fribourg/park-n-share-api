@@ -14,6 +14,7 @@ const { PARKINGS_FOLDER, BACKEND_URL } = require('../utils/globals');
  * @property {string} type The type of the parking slot (indoor / outdoor).
  * @property {boolean} isOccupied The occupation state of the parking slot.
  * @property {boolean} isPending The reservation state of the parking slot.
+ * @property {boolean} isValidated The validation state of the parking slot before making it accessible to the existing list.
  * @property {number} price The hourly price of the parking slot.
  * @property {Date} creationDate The creation date of the parking slot.
  * @property {Object} location The location (address and coordinates) of the parking slot.
@@ -49,15 +50,17 @@ const parkingSchema = new Schema({
   },
   isPending: {
     type: Boolean,
-    default: true,
+    default: false,
+    select: false,
+  },
+  isValidated: {
+    type: Boolean,
+    default: false,
     select: false,
   },
   price: {
     type: Number,
     required: [true, 'Please provide an hourly price for your parking slot.'],
-    unique: false,
-    lowercase: true,
-    trim: true,
   },
   creationDate: {
     type: Date,
