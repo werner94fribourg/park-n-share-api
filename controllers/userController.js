@@ -206,7 +206,7 @@ exports.resizeUserPhoto = catchAsync(
   async (req, _, next) => {
     const {
       file,
-      user: { id },
+      user: { _id: id },
     } = req;
 
     if (!file) {

@@ -7,7 +7,11 @@ const { Router } = require('express');
 const {
   handleParkingQuery,
   getAllParkings,
+  uploadParkingImages,
+  saveParkingImages,
+  createParking,
 } = require('../../controllers/parkingController');
+const { protect, restrictTo } = require('../../controllers/authController');
 
 /**
  * The Parking resource router.
@@ -152,6 +156,15 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/ServerError'
  */
-router.route('/').get(handleParkingQuery, getAllParkings);
+router
+  .route('/')
+  .get(handleParkingQuery, getAllParkings)
+  .post(
+    protect,
+    restrictTo('client', 'provider'),
+    uploadParkingImages,
+    saveParkingImages,
+    createParking,
+  );
 
 module.exports = router;
