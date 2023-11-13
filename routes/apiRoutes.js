@@ -13,4 +13,6 @@ const router = Router();
 
 router.use('/users', userRouter);
 
+router.use('/parkings', userRouter);
+
 module.exports = router;
