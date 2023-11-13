@@ -1,5 +1,6 @@
 const {catchAsync} = require("../utils/utils");
 const Park = require("../models/parkingModel");
+const AppError = require("../utils/classes/AppError");
 
 
 exports.handleParkingQuery = catchAsync(
@@ -33,6 +34,8 @@ exports.handleParkingQuery = catchAsync(
             query.parkType = req.query.parkType;
         }
 
+        req.query=query
+
         next();
     },
 );
@@ -42,8 +45,9 @@ exports.getAllParkings = catchAsync(
      * Function used to process queries and populate the response with such filters
      * @param query All queries used to output a specific response to the filters given by the queries
      * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+     * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
      */
-    async (query, res) => {
+    async (query, res, next) => {
         try {
             const parks = await Park.find(query).populate({
                 path: 'Owner',
@@ -54,15 +58,12 @@ exports.getAllParkings = catchAsync(
                 park.generateFileAbsolutePath();
             });
 
-            res.status(200).json({
-                status: 'success',
-                data: {parks},
-            });
+            res.status(200).json({ status: 'success', data: {parks}, });
+
         } catch (error) {
-            res.status(404).json({
-                status: 'error',
-                message: 'Query not found',
-            });
+            next(
+                new AppError("The requested query doesn't exist.", 404),
+            );
         }
     }
 );
