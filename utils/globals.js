@@ -24,16 +24,19 @@ exports.PUBLIC_FOLDER = 'public';
 
 /**
  * Filepath of the img static directory.
+ * @type {string}
  */
 exports.IMG_FOLDER = exports.PUBLIC_FOLDER + '/img';
 
 /**
  * File path of the users (i.e. user profile images) static directory.
+ * @type {string}
  */
 exports.USERS_FOLDER = exports.IMG_FOLDER + '/users';
 
 /**
  * File path of the parking slots (i.e. parking slot images) static directory.
+ * @type {string}
  */
 exports.PARKINGS_FOLDER = exports.IMG_FOLDER + '/parkings';
 

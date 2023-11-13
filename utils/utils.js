@@ -200,3 +200,42 @@ exports.uploadImage = multer({
     );
   },
 });
+
+/**
+ * Function used to check if a string expression corresponds to a boolean value.
+ * @param {string} expr The expression in string format we want to check if it is a boolean value.
+ * @returns {boolean} true if the expression is equal to true/false, false otherwise.
+ */
+exports.isBoolean = expr => {
+  return expr === 'true' || expr === 'false';
+};
+
+/**
+ * Function used to check the boolean validity of a field in a query parameter and throw an error if it is not the case.
+ * @param {string} field The field value we want to check if it is a boolean.
+ * @param {string} errMessage The error message returned by the route if the field value isn't a boolean.
+ * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+ * @returns {boolean} true if the field value corresponds to a boolean, false otherwise.
+ */
+exports.checkBoolean = (field, errMessage, next) => {
+  if (!exports.isBoolean(field)) {
+    next(new AppError(errMessage, 400));
+    return false;
+  }
+  return true;
+};
+
+/**
+ * Function used to check the numerical validity of a field in a query parameter and throw an error if it is not the case.
+ * @param {string} field The field value we want to check if it is a number.
+ * @param {string} errMessage The error message returned by the route if the field value isn't a boolean.
+ * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+ * @returns {boolean} true if the field value corresponds to a number, false otherwise.
+ */
+exports.checkNumber = (field, errMessage, next) => {
+  if (isNaN(field)) {
+    next(new AppError(errMessage, 400));
+    return false;
+  }
+  return true;
+};

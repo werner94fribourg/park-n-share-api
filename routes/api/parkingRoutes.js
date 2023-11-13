@@ -1,16 +1,16 @@
 /**
- * Park resource router of the REST API.
- * @module parkRoutes
+ * Parking resource router of the REST API.
+ * @module parkingRoutes
  */
 
 const { Router } = require('express');
 const {
-    handleParkingQuery,
-    getAllParkings,
+  handleParkingQuery,
+  getAllParkings,
 } = require('../../controllers/parkingController');
 
 /**
- * The Park resource router.
+ * The Parking resource router.
  * @type {Router}
  */
 const router = Router();
@@ -19,117 +19,97 @@ const router = Router();
  * @swagger
  * components:
  *   schemas:
- *     Park:
+ *     Parking:
  *       type: object
  *       properties:
  *         _id:
  *           type: string
  *           description: The id of the parking
  *           example: 642c38f3b7ed1dbd25858e9e
- *         title:
+ *         name:
  *           type: string
- *           description: The parking slot title
+ *           description: The name of the parking slot
  *           example: Beautiful parking slot
  *         description:
  *           type: string
  *           description: The description of the parking slot
  *           example: Lovely parking slot in the center.
- *         parkType:
+ *         type:
  *           type: string
- *           description: The parking place type
+ *           description: The type of the parking slot (indoor or outdoor)
  *           example: "indoor"
-*          isOccupied:
- *           type: boolean
- *           description: The current occupancy of the parking slot
- *           example: "true"
- *         isPending:
- *           type: boolean
- *           description: The current parking slot status.
- *           example: "true"
  *         price:
  *           type: number
- *           description: The price for the parking slot rental
- *           example: "3.50"
+ *           description: The hourly price for the parking slot rental
+ *           example: 3.50
  *         location:
- *           type: string
- *           description: The location of the parking slot
- *           example: "°12.4734629, "95.3197769"
- *         photo:
- *           type: string
- *           description: The parking slot pictures displayed.
- *           example: http://localhost:3001/public/img/parkings/default.jpeg
+ *           type: object
+ *           properties:
+ *             type:
+ *               type: string
+ *               example: Point
+ *             coordinates:
+ *               type: array
+ *               example: [-80.185942, 25.774772]
+ *             city:
+ *               type: string
+ *               example: Fribourg
+ *             address:
+ *               type: string
+ *               example: Boulevard de Pérolles 90
+ *         owner:
+ *           type: object
+ *           properties:
+ *             _id:
+ *               type: string
+ *               example: 642c38f3b7ed1dbd25858e9e
+ *             username:
+ *               type: string
+ *               example: johndoe27
+ *         photos:
+ *           type: array
+ *           items:
+ *            type: string
+ *            example: http://localhost:3001/public/img/parkings/default.jpeg
+ *           description: The parking slot pictures.
  */
 
 /**
  * @swagger
- * components:
- *   examples:
- *     QueryNotFound:
- *       summary: Query is empty
- *       value:
- *         status: fail
- *         message: The Query does not provide any result.
- *     QueryMismatch:
- *       summary: Wrong query
- *       value:
- *         status: fail
- *         message: The given query does not exist
- *     InternalServerExample:
- *       summary: Generic internal server error
- *       value:
- *         status: error
- *         message: Something went wrong. Try Again!
- */
-
-/**
- * @swagger
- * components:
- *   schemas:
- *     ServerError:
- *       type: object
- *       properties:
- *         status:
- *           type: string
- *           description: The status of the response
- *           example: error
- *         message:
- *           type: string
- *           description: The error message
- *           example: Something went wrong. Try Again!
- *     QueryError:
- *       type: object
- *       properties:
- *         status:
- *           type: string
- *           description: The status of the response
- *           example: fail
- *         message:
- *           type: string
- *           description: The error message
- *           example: The given query does not exist.
- *     QueryNotFound:
- *       type: object
- *       properties:
- *         status:
- *           type: string
- *           description: The status of the response
- *           example: fail
- *         message:
- *           type: string
- *           description: The error message
- *           example: The given query does not provide any result.
- */
-
-/**
- * @swagger
- * /parks:
+ * /parkings:
  *   get:
  *     tags:
- *       - Parking
- *     summary: Route used to get all the parking places
+ *       - Parkings
+ *     summary: Route used to get all existing parkings
+ *     parameters:
+ *       - name: isOccupied
+ *         in: query
+ *         description: 'The occupation state of the parking'
+ *         schema:
+ *           type: boolean
+ *           example: true
+ *       - name: minPrice
+ *         in: query
+ *         description: 'The minimal hourly price of the parking'
+ *         schema:
+ *           type: number
+ *           example: 23.5
+ *       - name: maxPrice
+ *         in: query
+ *         description: 'The maximal hourly price of the parking'
+ *         schema:
+ *           type: number
+ *           example: 42.7
+ *       - name: type
+ *         in: query
+ *         description: 'The type of the parking'
+ *         schema:
+ *           type: string
+ *           enum: [indoor, outdoor]
+ *           example: indoor
  *     responses:
  *       200:
- *         description: Query of all parking places
+ *         description: List of all parkings
  *         content:
  *           application/json:
  *             schema:
@@ -141,27 +121,30 @@ const router = Router();
  *                 data:
  *                   type: object
  *                   properties:
- *                     parks:
+ *                     parkings:
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/Parking'
- *      404:
- *         description: Query not found
+ *       400:
+ *         description: Query filter problems
  *         content:
  *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: "the query did not produce any result"
- *                 data:
- *                   type: object
- *                   properties:
- *                     parks:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/Parking'
+ *             examples:
+ *               isOccupiedExample:
+ *                 summary: Occupation field is not a boolean
+ *                 value:
+ *                   status: fail
+ *                   message: Please provide true or false for the occupation variable.
+ *               minPriceExample:
+ *                 summary: Minimum price field is not a number
+ *                 value:
+ *                   status: fail
+ *                   message: Please provide a numerical value for the minimum price.
+ *               maxPriceExample:
+ *                 summary: Maximum price field is not a number
+ *                 value:
+ *                   status: fail
+ *                   message: Please provide a numerical value for the maximum price.
  *       500:
  *         description: Internal Server Error
  *         content:
@@ -169,4 +152,6 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/ServerError'
  */
-router.route('/parkings').get(handleParkingQuery, getAllParkings);
+router.route('/').get(handleParkingQuery, getAllParkings);
+
+module.exports = router;
