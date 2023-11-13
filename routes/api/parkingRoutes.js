@@ -55,12 +55,18 @@ const router = Router();
  *             coordinates:
  *               type: array
  *               example: [-80.185942, 25.774772]
+ *             street:
+ *               type: string
+ *               example: Boulevard de Pérolles
+ *             housenumber:
+ *               type: string
+ *               example: 90
+ *             postcode:
+ *               type: string
+ *               example: 1700
  *             city:
  *               type: string
  *               example: Fribourg
- *             address:
- *               type: string
- *               example: Boulevard de Pérolles 90
  *         owner:
  *           type: object
  *           properties:
@@ -83,7 +89,7 @@ const router = Router();
  * /parkings:
  *   get:
  *     tags:
- *       - Parkings
+ *       - Parking
  *     summary: Route used to get all existing parkings
  *     parameters:
  *       - name: isOccupied
@@ -111,6 +117,18 @@ const router = Router();
  *           type: string
  *           enum: [indoor, outdoor]
  *           example: indoor
+ *       - name: location
+ *         in: query
+ *         description: 'The name of the municipality (in Switzerland) from which we want to retrieve the parkings'
+ *         schema:
+ *           type: string
+ *           example: Fribourg
+ *       - name: distance
+ *         in: query
+ *         description: 'The distance perimeter of the searched municipality from which we want to retrieve the parkings (5km by default if not specified)'
+ *         schema:
+ *           type: number
+ *           example: 5
  *     responses:
  *       200:
  *         description: List of all parkings
@@ -155,6 +173,74 @@ const router = Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ServerError'
+ *   post:
+ *     tags:
+ *       - Parking
+ *     summary: Route used to create a new parking (accessible to clients and providers only)
+ *     responses:
+ *       201:
+ *         description: The new created parking
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ *                   example: Your parking was submitted for validation.
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     parking:
+ *                       $ref: '#/components/schemas/Parking'
+ *       400:
+ *         description: Incorrect field validation
+ *         content:
+ *           application/json:
+ *             examples:
+ *               invalidInputExample:
+ *                 summary: Invalid field
+ *                 value:
+ *                   status: fail
+ *                   message: Invalid input data.
+ *                   fields: [name: A parking slot name can't be longer than 30 characters.]
+ *               parkingPicturesFormatExample:
+ *                 summary: Parking pictures format error
+ *                 value:
+ *                   status: fail
+ *                   message: Not an image! Please upload only images.
+ *       401:
+ *         description: User login problems
+ *         content:
+ *           application/json:
+ *             examples:
+ *               notLoggedInExample:
+ *                 $ref: '#/components/examples/notLoggedInExample'
+ *               accountNotFoundExample:
+ *                 $ref: '#/components/examples/accountNotFoundExample'
+ *               passwordChangedExample:
+ *                 $ref: '#/components/examples/passwordChangedExample'
+ *               InvalidTokenExample:
+ *                 $ref: '#/components/examples/InvalidTokenExample'
+ *               tokenExpiredExample:
+ *                 $ref: '#/components/examples/tokenExpiredExample'
+ *       403:
+ *         description: Forbidden access due to role
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/RolePermissionError'
+ *       500:
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ServerError'
+ *     security:
+ *       - bearerAuth: []
  */
 router
   .route('/')
