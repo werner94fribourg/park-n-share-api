@@ -5,7 +5,7 @@
 const User = require('../models/userModel');
 const AppError = require('../utils/classes/AppError');
 const { USERS_FOLDER } = require('../utils/globals');
-const { catchAsync, uploadImage } = require('../utils/utils');
+const { catchAsync, uploadImage, queryById } = require('../utils/utils');
 const sharp = require('sharp');
 
 exports.getAllUsers = catchAsync(
@@ -55,7 +55,7 @@ exports.getUser = catchAsync(
 
     const selectFields = self ? '+role +isEmailConfirmed' : '';
 
-    const user = await User.findById(id).select(selectFields);
+    const user = await queryById(User, id, {}, null, selectFields);
 
     if (!user) {
       next(
@@ -86,7 +86,7 @@ exports.updateUser = catchAsync(
       body: { photo },
     } = req;
 
-    const user = await User.findById(id);
+    const user = await queryById(User, id);
 
     if (!user) {
       next(
@@ -121,7 +121,7 @@ exports.deleteUser = catchAsync(
     } = req;
 
     //2) retrieve him from the database
-    const user = await User.findById(id);
+    const user = await queryById(User, id);
 
     //3) check if the user wasn't found
     if (!user) {
@@ -158,7 +158,7 @@ exports.setRole = catchAsync(
       params: { id },
       body: { role },
     } = req;
-    const user = await User.findById(id);
+    const user = await queryById(User, id);
 
     // 1) check if the user wasn't found
     if (!user) {

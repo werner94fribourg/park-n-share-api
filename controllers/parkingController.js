@@ -8,6 +8,7 @@ const {
   checkNumber,
   setBoolean,
   checkLocation,
+  queryById,
 } = require('../utils/utils');
 const Parking = require('../models/parkingModel');
 const { uploadImage } = require('../utils/utils');
@@ -132,6 +133,35 @@ exports.getAllParkings = catchAsync(
     res.status(200).json({ status: 'success', data: { parkings } });
   },
 );
+
+exports.getParking = catchAsync(async (req, res, next) => {
+  const {
+    params: { id },
+  } = req;
+
+  const parking = await queryById(
+    Parking,
+    id,
+    {
+      /*isValidated: true*/
+    },
+    {
+      path: 'owner',
+      select: '_id username photo',
+    },
+  );
+
+  if (!parking) {
+    next(
+      new AppError("The requested parking doesn't exist or was deleted.", 404),
+    );
+    return;
+  }
+
+  parking.generateFileAbsolutePath();
+
+  res.status(200).json({ status: 'success', data: { parking } });
+});
 
 /**
  * Multer middle function that takes care of processing the photos field images associated with the form sent to the server (max 10 pictures).

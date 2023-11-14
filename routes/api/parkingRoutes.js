@@ -10,6 +10,7 @@ const {
   uploadParkingImages,
   saveParkingImages,
   createParking,
+  getParking,
 } = require('../../controllers/parkingController');
 const { protect, restrictTo } = require('../../controllers/authController');
 
@@ -253,4 +254,5 @@ router
     createParking,
   );
 
+router.route('/:id').get(getParking);
 module.exports = router;
