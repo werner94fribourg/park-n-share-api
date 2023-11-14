@@ -980,6 +980,21 @@ router
  *                   properties:
  *                     user:
  *                       $ref: '#/components/schemas/User'
+ *       401:
+ *         description: User login problems
+ *         content:
+ *           application/json:
+ *             examples:
+ *               notLoggedInExample:
+ *                 $ref: '#/components/examples/notLoggedInExample'
+ *               accountNotFoundExample:
+ *                 $ref: '#/components/examples/accountNotFoundExample'
+ *               passwordChangedExample:
+ *                 $ref: '#/components/examples/passwordChangedExample'
+ *               InvalidTokenExample:
+ *                 $ref: '#/components/examples/InvalidTokenExample'
+ *               tokenExpiredExample:
+ *                 $ref: '#/components/examples/tokenExpiredExample'
  *       403:
  *         description: Role related errors
  *         content:
