@@ -124,6 +124,18 @@ const router = Router();
  *         schema:
  *           type: string
  *           example: Fribourg
+ *       - name: lat
+ *         in: query
+ *         description: 'The latitude coordinate of the location from which we want to retrieve the parkings'
+ *         schema:
+ *           type: number
+ *           example: 46.7446
+ *       - name: lng
+ *         in: query
+ *         description: 'The longitude coordinate of the location from which we want to retrieve the parkings'
+ *         schema:
+ *           type: number
+ *           example: 7.15453
  *       - name: distance
  *         in: query
  *         description: 'The distance perimeter of the searched municipality from which we want to retrieve the parkings (5km by default if not specified)'

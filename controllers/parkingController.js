@@ -88,7 +88,7 @@ exports.handleParkingQuery = catchAsync(
     }
 
     const distance = (query.distance ? Number(query.distance) : 5) / 6378.1;
-    if (query.location) {
+    if (query.location && !(query.lat && query.lng)) {
       const {
         data: {
           features: [
@@ -103,6 +103,13 @@ exports.handleParkingQuery = catchAsync(
         `${GEOAPI_SEARCH_URL}?text=${query.location}%2C%20Switzerland&apiKey=${GEOAPIFY_API_KEY}`,
       );
 
+      queryObj.location = {
+        $geoWithin: { $centerSphere: [[lat, lng], distance] },
+      };
+    }
+
+    if (query.lat && query.lng) {
+      const { lat, lng } = query;
       queryObj.location = {
         $geoWithin: { $centerSphere: [[lat, lng], distance] },
       };
