@@ -49,28 +49,29 @@ exports.handleParkingQuery = catchAsync(
     }
 
     if (query.minPrice || query.maxPrice) {
-      if (
-        !checkNumber(
-          query.minPrice,
-          'Please provide a numerical value for the minimum price.',
-          next,
+      if (query.minPrice) {
+        if (
+          !checkNumber(
+            query.minPrice,
+            'Please provide a numerical value for the minimum price.',
+            next,
+          )
         )
-      )
-        return;
-      if (
-        !checkNumber(
-          query.maxPrice,
-          'Please provide a numerical value for the maximum price.',
-          next,
+          return;
+      }
+      if (query.maxPrice) {
+        if (
+          !checkNumber(
+            query.maxPrice,
+            'Please provide a numerical value for the maximum price.',
+            next,
+          )
         )
-      )
-        return;
-
-      queryObj.price = { $and: [] };
-      if (query.minPrice)
-        queryObj['$and'].push({ $gte: parseFloat(query.minPrice) });
-      if (query.maxPrice)
-        queryObj['$and'].push({ $lte: parseFloat(query.maxPrice) });
+          return;
+      }
+      queryObj.price = {};
+      if (query.minPrice) queryObj.price.$gte = parseFloat(query.minPrice);
+      if (query.maxPrice) queryObj.price.$lte = parseFloat(query.maxPrice);
     }
 
     if (query.type) queryObj.type = req.query.type;
@@ -92,7 +93,9 @@ exports.handleParkingQuery = catchAsync(
         data: {
           features: [
             {
-              geometry: { coordinates },
+              geometry: {
+                coordinates: [lng, lat],
+              },
             },
           ],
         },
@@ -101,7 +104,7 @@ exports.handleParkingQuery = catchAsync(
       );
 
       queryObj.location = {
-        $geoWithin: { $centerSphere: [coordinates, distance] },
+        $geoWithin: { $centerSphere: [[lat, lng], distance] },
       };
     }
 
