@@ -27,6 +27,18 @@ const router = Router();
  *           type: string
  *           description: The username of the user
  *           example: johndoe27
+ *         email:
+ *           type: string
+ *           description: The email of the user
+ *           example: johndoe@example.com
+ *         phone:
+ *           type: string
+ *           description: The phone number of the user
+ *           example: "+41888888888"
+ *         photo:
+ *           type: string
+ *           description: The profile picture of the user
+ *           example: http://localhost:3001/public/img/users/default.jpeg
  */
 
 /**

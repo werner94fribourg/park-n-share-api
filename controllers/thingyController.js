@@ -86,8 +86,6 @@ exports.getButtonTimer = catchAsync(
       }
     }
 
-    //console.log('Count: ', count, 'Nb rows: ', rows.length);
-
     if (!rows) {
       next(
         new AppError(

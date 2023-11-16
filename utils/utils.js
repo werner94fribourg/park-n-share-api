@@ -163,7 +163,13 @@ exports.sendQueryResults = (res, fluxQuery) => {
   INFLUX.queryClient.queryRows(fluxQuery, {
     next: (row, tableMeta) => {
       const rowObject = tableMeta.toObject(row);
-      result.push(rowObject);
+      result.push({
+        device: rowObject.device,
+        measurement: rowObject._measurement,
+        property: rowObject._field,
+        value: rowObject._value,
+        time: rowObject._time,
+      });
     },
     error: error => {
       res.status(500).json({
