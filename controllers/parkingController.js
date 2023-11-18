@@ -121,6 +121,37 @@ exports.handleParkingQuery = catchAsync(
   },
 );
 
+exports.getMyParkings = catchAsync(
+    /**
+     * Function used to get all existing parkings of the user itself.
+     * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+     * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+     */
+    async (req, res) => {
+
+      const { user } = req;
+      //if (user.role !== 'provider') {
+      //  throw new AppError('User is not a provider.', 404);
+      //}
+
+      const { _id: id } = user;
+
+      const parkings = await Parking.find({
+        owner: id,
+        ...req.query,
+      }).populate({
+        path: 'owner',
+        select: '_id username',
+      })
+
+      parkings.forEach(parking => {
+        parking.generateFileAbsolutePath();
+      });
+
+      res.status(200).json({ status: 'success', data: { parkings } });
+    },
+);
+
 exports.getAllParkings = catchAsync(
   /**
    * Function used to get all existing parkings in the application.

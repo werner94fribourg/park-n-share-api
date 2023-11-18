@@ -11,6 +11,7 @@ const {
   saveParkingImages,
   createParking,
   getParking,
+  getMyParkings,
 } = require('../../controllers/parkingController');
 const { protect, restrictTo } = require('../../controllers/authController');
 
@@ -266,5 +267,13 @@ router
     createParking,
   );
 
+// ToDO: add swagger
+
 router.route('/:id').get(getParking);
+
+// ToDO: add swagger
+
+router.route('/my-parkings').get(
+    restrictTo('provider'),
+    getMyParkings)
 module.exports = router;
