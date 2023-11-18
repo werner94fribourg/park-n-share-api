@@ -12,6 +12,7 @@ const {
   createParking,
   getParking,
   getMyParkings,
+  validateParking,
 } = require('../../controllers/parkingController');
 const { protect, restrictTo } = require('../../controllers/authController');
 
@@ -275,5 +276,13 @@ router.route('/:id').get(getParking);
 
 router.route('/my-parkings').get(
     restrictTo('provider'),
-    getMyParkings)
+    getMyParkings);
+
+// ToDo: add swagger
+
+router.route('/:id/validate').patch(
+    protect,
+    restrictTo('admin'),
+    validateParking);
+
 module.exports = router;

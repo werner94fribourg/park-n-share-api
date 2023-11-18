@@ -24,6 +24,7 @@ const {
 } = process;
 const axios = require('axios');
 const crypto = require('crypto');
+const User = require("../models/userModel");
 
 exports.handleParkingQuery = catchAsync(
   /**
@@ -119,6 +120,40 @@ exports.handleParkingQuery = catchAsync(
 
     next();
   },
+);
+
+exports.validateParking = catchAsync(
+    /**
+     * Function used to validate the parkings posted by providers from admin.
+     * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+     * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+     * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+     */
+    async (req, res, next) => {
+
+      const {
+        params: { id },
+      } = req;
+
+      const parking = await queryById(Parking, id);
+
+      // Check if parking exists and is not already validated
+      if (!parking || parking.isValidate !== false) {
+        return next(
+            new AppError("The requested parking doesn't exist or was already validated.", 404)
+        );
+      }
+
+      // set isValidate to true
+      parking.isValidate = true;
+
+      // save the updated parking model
+      await parking.save();
+
+      parking.generateFileAbsolutePath();
+
+      res.status(200).json({ status: 'success', data: { parking } });
+    }
 );
 
 exports.getMyParkings = catchAsync(
