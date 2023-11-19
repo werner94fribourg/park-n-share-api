@@ -11,10 +11,14 @@ const {
   saveParkingImages,
   createParking,
   getParking,
-  getMyParkings,
   validateParking,
 } = require('../../controllers/parkingController');
-const { protect, restrictTo } = require('../../controllers/authController');
+const {
+  protect,
+  restrictTo,
+  checkConnected,
+  checkProvider,
+} = require('../../controllers/authController');
 
 /**
  * The Parking resource router.
@@ -58,6 +62,7 @@ const router = Router();
  *             coordinates:
  *               type: array
  *               example: [-80.185942, 25.774772]
+ *               maxItems: 2
  *             street:
  *               type: string
  *               example: Boulevard de Pérolles
@@ -192,6 +197,75 @@ const router = Router();
  *     tags:
  *       - Parking
  *     summary: Route used to create a new parking (accessible to clients and providers only)
+ *     requestBody:
+ *       description: The new parking we want to create
+ *       content:
+ *         application/json:
+ *           schema:
+ *            type: object
+ *            required:
+ *              - name
+ *              - description
+ *              - price
+ *              - coordinates
+ *            properties:
+ *              name:
+ *                type: string
+ *                description: The name of the parking slot
+ *                example: Beautiful parking
+ *              description:
+ *                type: string
+ *                description: The description of the parking slot
+ *                example: Beautiful parking slot situated in Fribourg.
+ *              type:
+ *                type: string
+ *                description: The type of the parking slot (indoor/outdoor)
+ *                example: indoor
+ *              price:
+ *                type: number
+ *                description: The hourly price of the parking slot
+ *                example: 2.5
+ *              coordinates:
+ *                type: array
+ *                description: The coordinates of the parking slot (lat/long)
+ *                example: [7.1455, 47.699]
+ *                maxItems: 2
+ *         multipart/form-data:
+ *           schema:
+ *            type: object
+ *            required:
+ *              - name
+ *              - description
+ *              - price
+ *              - coordinates
+ *            properties:
+ *              name:
+ *                type: string
+ *                description: The name of the parking slot
+ *                example: Beautiful parking
+ *              description:
+ *                type: string
+ *                description: The description of the parking slot
+ *                example: Beautiful parking slot situated in Fribourg.
+ *              type:
+ *                type: string
+ *                description: The type of the parking slot (indoor/outdoor)
+ *                example: indoor
+ *              price:
+ *                type: number
+ *                description: The hourly price of the parking slot
+ *                example: 2.5
+ *              coordinates:
+ *                type: array
+ *                description: The coordinates of the parking (lat/long)
+ *                example: [7.1455, 47.699]
+ *                maxItems: 2
+ *              photos:
+ *                type: array
+ *                items:
+ *                  type: string
+ *                  description: The photos of the parkings slot
+ *                  format: binary
  *     responses:
  *       201:
  *         description: The new created parking
@@ -259,7 +333,7 @@ const router = Router();
  */
 router
   .route('/')
-  .get(handleParkingQuery, getAllParkings)
+  .get(handleParkingQuery, checkConnected, getAllParkings)
   .post(
     protect,
     restrictTo('client', 'provider'),
@@ -268,21 +342,165 @@ router
     createParking,
   );
 
-// ToDO: add swagger
+/**
+ * @swagger
+ * /parkings/my-parkings:
+ *   get:
+ *     tags:
+ *       - Parking
+ *     summary: Route used to get all provided parkings (accessible to providers only)
+ *     responses:
+ *       200:
+ *         description: List of all parkings provided by the user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     parkings:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Parking'
+ *       401:
+ *         description: User login problems
+ *         content:
+ *           application/json:
+ *             examples:
+ *               notLoggedInExample:
+ *                 $ref: '#/components/examples/notLoggedInExample'
+ *               accountNotFoundExample:
+ *                 $ref: '#/components/examples/accountNotFoundExample'
+ *               passwordChangedExample:
+ *                 $ref: '#/components/examples/passwordChangedExample'
+ *               InvalidTokenExample:
+ *                 $ref: '#/components/examples/InvalidTokenExample'
+ *               tokenExpiredExample:
+ *                 $ref: '#/components/examples/tokenExpiredExample'
+ *       403:
+ *         description: Forbidden access due to role
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/RolePermissionError'
+ *       500:
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ServerError'
+ *     security:
+ *       - bearerAuth: []
+ */
+router
+  .route('/my-parkings')
+  .get(protect, restrictTo('provider'), checkProvider, getAllParkings);
 
-router.route('/:id').get(getParking);
-
-// ToDO: add swagger
-
-router.route('/my-parkings').get(
-    restrictTo('provider'),
-    getMyParkings);
+/**
+ * @swagger
+ * /parkings/{id}:
+ *   get:
+ *     tags:
+ *       - Parking
+ *     summary: Route used to get a single parking
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         description: The id of the parking we want to retrieve
+ *         required: true
+ *         type: string
+ *     responses:
+ *       200:
+ *         description: The retrieved parking
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     parking:
+ *                       $ref: '#/components/schemas/Parking'
+ *       500:
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ServerError'
+ */
+router.route('/:id').get(checkConnected, getParking);
 
 // ToDo: add swagger
-
-router.route('/:id/validate').patch(
-    protect,
-    restrictTo('admin'),
-    validateParking);
+/**
+ * @swagger
+ * /parkings/{id}/validate:
+ *   patch:
+ *     tags:
+ *       - Parking
+ *     summary: Route used to validate a parking requested by an user (accessible to admins only)
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         description: The id of the parking we want to validate
+ *         required: true
+ *         type: string
+ *     responses:
+ *       200:
+ *         description: The updated validated parking
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     parking:
+ *                       $ref: '#/components/schemas/Parking'
+ *       401:
+ *         description: User login problems
+ *         content:
+ *           application/json:
+ *             examples:
+ *               notLoggedInExample:
+ *                 $ref: '#/components/examples/notLoggedInExample'
+ *               accountNotFoundExample:
+ *                 $ref: '#/components/examples/accountNotFoundExample'
+ *               passwordChangedExample:
+ *                 $ref: '#/components/examples/passwordChangedExample'
+ *               InvalidTokenExample:
+ *                 $ref: '#/components/examples/InvalidTokenExample'
+ *               tokenExpiredExample:
+ *                 $ref: '#/components/examples/tokenExpiredExample'
+ *       403:
+ *         description: Forbidden access due to role
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/RolePermissionError'
+ *       500:
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ServerError'
+ *     security:
+ *       - bearerAuth: []
+ */
+router
+  .route('/:id/validate')
+  .patch(protect, restrictTo('admin'), validateParking);
 
 module.exports = router;

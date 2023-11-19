@@ -24,7 +24,8 @@ const {
 } = process;
 const axios = require('axios');
 const crypto = require('crypto');
-const User = require("../models/userModel");
+const User = require('../models/userModel');
+const Email = require('../utils/classes/Email');
 
 exports.handleParkingQuery = catchAsync(
   /**
@@ -123,68 +124,53 @@ exports.handleParkingQuery = catchAsync(
 );
 
 exports.validateParking = catchAsync(
-    /**
-     * Function used to validate the parkings posted by providers from admin.
-     * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
-     * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
-     * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
-     */
-    async (req, res, next) => {
+  /**
+   * Function used to validate the parkings posted by providers from admin.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, res, next) => {
+    const {
+      params: { id },
+    } = req;
 
-      const {
-        params: { id },
-      } = req;
+    const parking = await queryById(Parking, id);
 
-      const parking = await queryById(Parking, id);
-
-      // Check if parking exists and is not already validated
-      if (!parking || parking.isValidate !== false) {
-        return next(
-            new AppError("The requested parking doesn't exist or was already validated.", 404)
-        );
-      }
-
-      // set isValidate to true
-      parking.isValidate = true;
-
-      // save the updated parking model
-      await parking.save();
-
-      parking.generateFileAbsolutePath();
-
-      res.status(200).json({ status: 'success', data: { parking } });
+    // Check if parking exists.
+    if (!parking) {
+      return next(new AppError("The requested parking doesn't exists.", 404));
     }
-);
 
-exports.getMyParkings = catchAsync(
-    /**
-     * Function used to get all existing parkings of the user itself.
-     * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
-     * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
-     */
-    async (req, res) => {
+    // set isValidate to true
+    parking.isValidate = true;
 
-      const { user } = req;
-      //if (user.role !== 'provider') {
-      //  throw new AppError('User is not a provider.', 404);
-      //}
+    // save the updated parking model
+    await parking.save();
 
-      const { _id: id } = user;
+    // Change the status of the owner to provider
+    const owner = await User.findByIdAndUpdate(parking.owner, {
+      role: 'provider',
+    });
 
-      const parkings = await Parking.find({
-        owner: id,
-        ...req.query,
-      }).populate({
-        path: 'owner',
-        select: '_id username',
-      })
+    // Send email to owner for validation
+    try {
+      await new Email(owner).sendValidatedParking();
+    } catch (err) {
+      next(
+        new AppError(
+          'There was an error sending the confirmation email. Please contact us at admin@parknshare.com!',
+          500,
+        ),
+      );
 
-      parkings.forEach(parking => {
-        parking.generateFileAbsolutePath();
-      });
+      console.error(err);
+      return;
+    }
+    parking.generateFileAbsolutePath();
 
-      res.status(200).json({ status: 'success', data: { parkings } });
-    },
+    res.status(200).json({ status: 'success', data: { parking } });
+  },
 );
 
 exports.getAllParkings = catchAsync(
@@ -194,9 +180,11 @@ exports.getAllParkings = catchAsync(
    * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
    */
   async (req, res) => {
+    if (!req.own) {
+      req.query.isValidated = true;
+    }
     const parkings = await Parking.find({
       ...req.query,
-      /*isValidated: true,*/
     }).populate({
       path: 'owner',
       select: '_id username',
@@ -214,20 +202,18 @@ exports.getParking = catchAsync(async (req, res, next) => {
   const {
     params: { id },
   } = req;
+  const queryObj = {};
+  if (!req.user) queryObj.isValidated = true;
 
-  const parking = await queryById(
-    Parking,
-    id,
-    {
-      /*isValidated: true*/
-    },
-    {
-      path: 'owner',
-      select: '_id username photo',
-    },
-  );
+  const parking = await queryById(Parking, id, queryObj, {
+    path: 'owner',
+    select: '_id username photo',
+  });
 
-  if (!parking) {
+  if (
+    !parking ||
+    (req.user && parking.owner._id.valueOf() !== req.user._id.valueOf())
+  ) {
     next(
       new AppError("The requested parking doesn't exist or was deleted.", 404),
     );

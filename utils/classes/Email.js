@@ -121,6 +121,10 @@ class Email {
       'Your password reset token (valid for only 10 minutes)',
     );
   }
+
+  async sendValidatedParking() {
+    await this.send('validatedParking', 'Your parking request was validated');
+  }
 }
 
 module.exports = Email;

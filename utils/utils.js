@@ -9,9 +9,11 @@ const mongoose = require('mongoose');
 const { TWILIO_CLIENT } = require('./globals');
 const { Server } = require('http');
 const multer = require('multer');
+const { promisify } = require('util');
+const User = require('../models/userModel');
 
 const {
-  env: { TWILIO_PHONE_NUMBER },
+  env: { TWILIO_PHONE_NUMBER, JWT_SECRET },
 } = process;
 
 /**
@@ -277,4 +279,46 @@ exports.queryById = async (
 
     throw err;
   }
+};
+
+exports.getToken = req => {
+  const {
+    headers: { authorization },
+    cookies: { jwt: cookieToken },
+  } = req;
+
+  let token = '';
+
+  if (authorization && authorization.startsWith('Bearer'))
+    token = authorization.split(' ')[1];
+  else if (cookieToken) token = cookieToken;
+
+  return token;
+};
+
+exports.connectUser = async token => {
+  // 1) Verify the token : errors that can be thrown in the process and catched by catchAsync
+  //  JSONWebTokenError : invalid token
+  //  TokenExpiredError : the token has expired
+  const decoded = await promisify(jwt.verify)(token, JWT_SECRET);
+
+  console.log(decoded);
+  // 2) Check if the user still exists
+  const currentUser = await User.findById(decoded.id).select(
+    '+role +passwordChangedAt +isConfirmed +isEmailConfirmed',
+  );
+  if (!currentUser)
+    throw new AppError(
+      "The requested account doesn't exist or was deleted.",
+      401,
+    );
+
+  // 3) Check if the user has changed password after the token was issued
+  if (currentUser.changedPasswordAfter(decoded.iat))
+    throw new AppError(
+      'User recently changed password! Please log in again.',
+      401,
+    );
+
+  return currentUser;
 };

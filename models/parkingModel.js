@@ -37,6 +37,7 @@ const parkingSchema = new Schema({
   description: {
     type: String,
     trim: true,
+    required: [true, 'Please provide a description to your parking slot.'],
   },
   type: {
     type: String,

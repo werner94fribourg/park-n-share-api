@@ -2,14 +2,18 @@
  * Functions used to handle the authentication in the API
  * @module authController
  */
-const { catchAsync, createSendToken, sendPinCode } = require('../utils/utils');
+const {
+  catchAsync,
+  createSendToken,
+  sendPinCode,
+  getToken,
+  connectUser,
+} = require('../utils/utils');
 const AppError = require('../utils/classes/AppError');
 const User = require('../models/userModel');
 const { FRONTEND_URL } = require('../utils/globals');
 const crypto = require('crypto');
 const Email = require('../utils/classes/Email');
-const jwt = require('jsonwebtoken');
-const { promisify } = require('util');
 
 exports.signup = catchAsync(
   /**
@@ -201,20 +205,7 @@ exports.protect = catchAsync(
    */
   async (req, _, next) => {
     // 1) Get the token from the header / cookie and check if it exists
-    const {
-      headers: { authorization },
-      cookies: { jwt: cookieToken },
-    } = req;
-
-    const {
-      env: { JWT_SECRET },
-    } = process;
-
-    let token = '';
-
-    if (authorization && authorization.startsWith('Bearer'))
-      token = authorization.split(' ')[1];
-    else if (cookieToken) token = cookieToken;
+    const token = getToken(req);
 
     if (!token) {
       next(
@@ -227,38 +218,9 @@ exports.protect = catchAsync(
       return;
     }
 
-    // 2) Verify the token : errors that can be thrown in the process and catched by catchAsync
-    //  JSONWebTokenError : invalid token
-    //  TokenExpiredError : the token has expired
-    const decoded = await promisify(jwt.verify)(token, JWT_SECRET);
+    const currentUser = await connectUser(token);
 
-    // 3) Check if the user still exists
-    const currentUser = await User.findById(decoded.id).select(
-      '+role +passwordChangedAt +isConfirmed +isEmailConfirmed',
-    );
-
-    if (!currentUser) {
-      next(
-        new AppError(
-          "The requested account doesn't exist or was deleted.",
-          401,
-        ),
-      );
-      return;
-    }
-
-    // 4) Check if the user has changed password after the token was issued
-    if (currentUser.changedPasswordAfter(decoded.iat)) {
-      next(
-        new AppError(
-          'User recently changed password! Please log in again.',
-          401,
-        ),
-      );
-      return;
-    }
-
-    //5) Access the logged user to be used in the next middleware function if everything is fine
+    //3) Access the logged user to be used in the next middleware function if everything is fine
     req.user = currentUser;
 
     next();
@@ -322,6 +284,11 @@ exports.sendConfirmationEmail = catchAsync(
     try {
       const url = `${FRONTEND_URL}/confirm-email/${confirmEmailToken}`;
       await new Email(user, url).sendEmailConfirmation();
+      //4) Sent email success message to the user
+      res.status(200).json({
+        status: 'success',
+        message: 'Confirmation email successfully sent to your address.',
+      });
     } catch (err) {
       user.confirmEmailToken = undefined;
       user.confirmEmailExpires = undefined;
@@ -335,12 +302,6 @@ exports.sendConfirmationEmail = catchAsync(
 
       console.error(err);
     }
-
-    //4) Sent email success message to the user
-    res.status(200).json({
-      status: 'success',
-      message: 'Confirmation email successfully sent to your address.',
-    });
   },
 );
 
@@ -547,5 +508,48 @@ exports.resetPassword = catchAsync(
 
     // send back the response
     res.status(200).json(resObject);
+  },
+);
+
+exports.checkProvider = catchAsync(async (req, _, next) => {
+  const { user, query } = req;
+  query.owner = user._id;
+
+  req.own = true;
+  next();
+});
+
+exports.checkConnected = catchAsync(
+  /**
+   * Middleware Function used to get all existing parkings of the user itself if he is a provider.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, _, next) => {
+    const {
+      query,
+      headers: { authorization },
+      cookies: { jwt: cookieToken },
+    } = req;
+
+    if (authorization || cookieToken) {
+      const token = getToken(req);
+      try {
+        const connectedUser = await connectUser(token);
+        if (connectedUser) {
+          query.owner = { $ne: connectedUser._id };
+          req.user = connectedUser;
+
+          req.own = false;
+          next();
+        }
+      } catch (err) {
+        next();
+      }
+
+      return;
+    }
+
+    next();
   },
 );
