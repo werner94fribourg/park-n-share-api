@@ -12,6 +12,8 @@ const {
   createParking,
   getParking,
   validateParking,
+  startReservation,
+  endReservation
 } = require('../../controllers/parkingController');
 const {
   protect,
@@ -502,5 +504,15 @@ router.route('/:id').get(checkConnected, getParking);
 router
   .route('/:id/validate')
   .patch(protect, restrictTo('admin'), validateParking);
+
+// ToDO: Swagger
+
+router.route('/:id/start-reservation').patch(protect, restrictTo('client', 'provider'), startReservation);
+
+// ToDO: Swagger
+
+router.route('/:id/end-reservation').patch(protect, restrictTo('client', 'provider'), endReservation);
+
+
 
 module.exports = router;

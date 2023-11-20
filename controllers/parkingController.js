@@ -11,6 +11,7 @@ const {
   queryById,
 } = require('../utils/utils');
 const Parking = require('../models/parkingModel');
+const Occupation = require('../models/occupationModel')
 const { uploadImage } = require('../utils/utils');
 const {
   PARKINGS_FOLDER,
@@ -26,6 +27,7 @@ const axios = require('axios');
 const crypto = require('crypto');
 const User = require('../models/userModel');
 const Email = require('../utils/classes/Email');
+
 
 exports.handleParkingQuery = catchAsync(
   /**
@@ -269,6 +271,111 @@ exports.saveParkingImages = catchAsync(
 
     next();
   },
+);
+
+exports.startReservation = catchAsync(
+    /**
+     * Function used to create a new parking slot.
+     * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+     * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+     * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+     */
+    async (req, res, next) => {
+
+      // ToDo: Get credit card from user
+      // ToDo: Send email to provider which says parking place is reserved
+
+      const {
+        user: { _id : userId },
+        parking: { _id : id },
+        // card: { _id: idCard, cardBalance },
+      } = req;
+
+      const parking = await queryById(Parking,
+          id,
+          {
+            /*isValidated: true*/
+          },
+          [
+            {
+              path: 'owner',
+              select: '_id username email',
+            },
+            {
+              path: 'occupation',
+              select: 'start end',
+            },
+            //{
+            //  path: 'creditCard',
+            //  select: 'balance',
+            //},
+          ]
+      );
+
+      if (parking.isOccupied === true) {
+        next(
+            new AppError("The requested parking is already occupied.", 400),
+        );
+        return;
+      }
+
+      parking.isOccupied = true;
+
+      const { newOccupation } = await Occupation.create({
+        start: Date.now(),
+        client: userId,
+        parking,
+      });
+
+      res.status(200).json({
+        status: 'success',
+        message: 'You created a new parking reservation.',
+        data: { occupation: newOccupation },
+      });
+    },
+);
+
+exports.endReservation = catchAsync(
+    /**
+     * Function used to create a new parking slot.
+     * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+     * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+     * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+     */
+    async (req, res, next) => {
+
+      const {
+        user: { _id : userId },
+        parking: { _id : id },
+      } = req;
+
+      const occupation = await Occupation.find({ client: userId, parking: id, endDate: undefined })
+
+      if (!occupation) {
+        next(
+            new AppError("You haven't reserved this parking.", 400),
+        );
+        return;
+      }
+
+      const parking = await Parking.findById(id)
+
+      parking.isOccupied = false;
+
+      const { updateOccupation } = await Occupation.findByIdAndUpdate(occupation._id, {
+        end: Date.now(),
+      });
+
+      // ToDo: Make the payment
+
+      res.status(200).json({
+        status: 'success',
+        message: 'You successfully finished your reservation.',
+        data: { occupation: updateOccupation },
+      });
+
+    },
+
 );
 
 exports.createParking = catchAsync(

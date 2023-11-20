@@ -18,16 +18,25 @@ const { mongoose, Schema } = require('mongoose');
  * @type {mongoose.Schema<Occupation>}
  */
 const occupationSchema = new mongoose.Schema({
+  // ToDo: finish creditCard reference
   start: {
     type: Date,
   },
-  endOccupation: {
+  end: {
     type: Date,
+  },
+  client: {
+    type: Schema.ObjectId,
+    ref: 'User',
   },
   parking: {
     type: Schema.ObjectId,
     ref: 'Parking',
   },
+  //creditCard: {
+  //  type: Schema.ObjectId,
+  //  ref: 'creditCard',
+  //},
 });
 
 /**
