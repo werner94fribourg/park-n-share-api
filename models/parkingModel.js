@@ -4,7 +4,11 @@
  */
 
 const { mongoose, Schema } = require('mongoose');
-const { PARKINGS_FOLDER, BACKEND_URL } = require('../utils/globals');
+const {
+  PARKINGS_FOLDER,
+  BACKEND_URL,
+  USERS_FOLDER,
+} = require('../utils/globals');
 
 /**
  * The representation of the Parking model
@@ -100,6 +104,8 @@ parkingSchema.methods.generateFileAbsolutePath = function () {
     this.photos = this.photos.map(
       photo => `${BACKEND_URL}/${PARKINGS_FOLDER}/${photo}`,
     );
+  if (this.owner.photo)
+    this.owner.photo = `${BACKEND_URL}/${USERS_FOLDER}/${this.owner.photo}`;
 };
 
 /**

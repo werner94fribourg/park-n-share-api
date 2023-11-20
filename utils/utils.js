@@ -271,9 +271,12 @@ exports.queryById = async (
   selectParams = '',
 ) => {
   try {
-    return popObj && Object.keys(popObj).length !== 0
-      ? await Model.findById(id, queryObj).select(selectParams).populate(popObj)
-      : await Model.findById(id, queryObj).select(selectParams);
+    let query = Model.find({ _id: id, ...queryObj });
+    if (selectParams !== '') query = query.select(selectParams);
+    if (popObj && Object.keys(popObj).length !== 0)
+      query = query.populate(popObj);
+    const [document] = await query;
+    return document;
   } catch (err) {
     if (err.name === 'CastError') return null;
 
@@ -302,7 +305,6 @@ exports.connectUser = async token => {
   //  TokenExpiredError : the token has expired
   const decoded = await promisify(jwt.verify)(token, JWT_SECRET);
 
-  console.log(decoded);
   // 2) Check if the user still exists
   const currentUser = await User.findById(decoded.id).select(
     '+role +passwordChangedAt +isConfirmed +isEmailConfirmed',
