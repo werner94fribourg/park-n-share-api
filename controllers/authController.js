@@ -218,7 +218,7 @@ exports.protect = catchAsync(
       return;
     }
 
-    const currentUser = await connectUser(token);
+    const currentUser = await connectUser(User, token);
 
     //3) Access the logged user to be used in the next middleware function if everything is fine
     req.user = currentUser;
@@ -535,7 +535,7 @@ exports.checkConnected = catchAsync(
     if (authorization || cookieToken) {
       const token = getToken(req);
       try {
-        const connectedUser = await connectUser(token);
+        const connectedUser = await connectUser(User, token);
         if (connectedUser) {
           query.owner = { $ne: connectedUser._id };
           req.user = connectedUser;

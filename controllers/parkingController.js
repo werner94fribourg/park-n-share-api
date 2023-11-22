@@ -11,7 +11,7 @@ const {
   queryById,
 } = require('../utils/utils');
 const Parking = require('../models/parkingModel');
-const Occupation = require('../models/occupationModel')
+const Occupation = require('../models/occupationModel');
 const { uploadImage } = require('../utils/utils');
 const {
   PARKINGS_FOLDER,
@@ -27,7 +27,8 @@ const axios = require('axios');
 const crypto = require('crypto');
 const User = require('../models/userModel');
 const Email = require('../utils/classes/Email');
-
+const mongoose = require('mongoose');
+const moment = require('moment-timezone');
 
 exports.handleParkingQuery = catchAsync(
   /**
@@ -189,7 +190,7 @@ exports.getAllParkings = catchAsync(
       ...req.query,
     }).populate({
       path: 'owner',
-      select: '_id username',
+      select: '_id username email',
     });
 
     parkings.forEach(parking => {
@@ -274,108 +275,206 @@ exports.saveParkingImages = catchAsync(
 );
 
 exports.startReservation = catchAsync(
-    /**
-     * Function used to create a new parking slot.
-     * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
-     * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
-     * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
-     */
-    async (req, res, next) => {
+  /**
+   * Function used to create a new parking slot.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, res, next) => {
+    // ToDo: Get credit card from user
+    const {
+      user: { _id: userId, username, email },
+      params: { id },
+      // card: { _id: idCard, cardBalance },
+    } = req;
 
-      // ToDo: Get credit card from user
-      // ToDo: Send email to provider which says parking place is reserved
+    const parking = await queryById(
+      Parking,
+      id,
+      {
+        isValidated: true,
+      },
+      {
+        path: 'owner',
+        select: '_id username email',
+      },
+      '+isOccupied',
+    );
 
-      const {
-        user: { _id : userId },
-        parking: { _id : id },
-        // card: { _id: idCard, cardBalance },
-      } = req;
+    // Check if parking exists.
+    if (!parking) {
+      return next(new AppError("The requested parking doesn't exists.", 404));
+    }
 
-      const parking = await queryById(Parking,
-          id,
-          {
-            /*isValidated: true*/
-          },
+    // Check if the connected user is the owner of the parking
+    if (parking.owner._id.valueOf() === userId.valueOf()) {
+      return next(new AppError("You can't reserve your own parkings.", 400));
+    }
+
+    // Check if the parking is already occupied
+    if (parking.isOccupied === true) {
+      next(new AppError('The requested parking is already occupied.', 400));
+      return;
+    }
+
+    // Create an occupation for the parking
+    // N.B. : a transaction is needed such that updating the occupation state of a parking and create a new occupation in the database will be done atomically
+    const session = await mongoose.startSession();
+
+    try {
+      await session.startTransaction();
+
+      const [[occupation]] = await Promise.all([
+        Occupation.create(
           [
             {
-              path: 'owner',
-              select: '_id username email',
+              start: Date.now(),
+              end: undefined,
+              client: userId,
+              parking: parking._id,
             },
-            {
-              path: 'occupation',
-              select: 'start end',
-            },
-            //{
-            //  path: 'creditCard',
-            //  select: 'balance',
-            //},
-          ]
-      );
+          ],
+          { session },
+        ),
+        Parking.updateOne(
+          { _id: parking._id },
+          { isOccupied: true },
+          { session, runValidators: false },
+        ),
+      ]);
 
-      if (parking.isOccupied === true) {
-        next(
-            new AppError("The requested parking is already occupied.", 400),
-        );
-        return;
-      }
+      const returnedOccupation = {
+        ...occupation._doc,
+        client: {
+          _id: userId,
+          username,
+          email,
+        },
+        parking: {
+          _id: id,
+          name: parking.name,
+        },
+      };
 
-      parking.isOccupied = true;
-
-      const { newOccupation } = await Occupation.create({
-        start: Date.now(),
-        client: userId,
-        parking,
-      });
+      // TODO: send email (sms ?) to the owner of the parking which says parking place was reserved
 
       res.status(200).json({
         status: 'success',
         message: 'You created a new parking reservation.',
-        data: { occupation: newOccupation },
+        data: { occupation: returnedOccupation },
       });
-    },
+      await session.commitTransaction();
+    } catch (err) {
+      await session.abortTransaction();
+      next(err);
+    } finally {
+      await session.endSession();
+    }
+  },
 );
 
 exports.endReservation = catchAsync(
-    /**
-     * Function used to create a new parking slot.
-     * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
-     * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
-     * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
-     */
-    async (req, res, next) => {
+  /**
+   * Function used to create a new parking slot.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, res, next) => {
+    const {
+      user: { _id: userId, username, email },
+      params: { id },
+    } = req;
 
-      const {
-        user: { _id : userId },
-        parking: { _id : id },
-      } = req;
+    const [occupation, parking] = await Promise.all([
+      Occupation.findOne({
+        client: userId.valueOf(),
+        parking: id,
+        end: undefined,
+      }),
+      queryById(
+        Parking,
+        id,
+        {
+          isValidated: true,
+        },
+        {
+          path: 'owner',
+          select: '_id username email',
+        },
+        '+isOccupied',
+      ),
+    ]);
 
-      const occupation = await Occupation.find({ client: userId, parking: id, endDate: undefined })
+    // Check if the parking exists
+    if (!parking) {
+      return next(new AppError("The requested parking doesn't exists.", 404));
+    }
 
-      if (!occupation) {
-        next(
-            new AppError("You haven't reserved this parking.", 400),
-        );
-        return;
-      }
+    // Check if the user has reserved the parking
+    if (!occupation) {
+      next(new AppError("You haven't reserved this parking.", 400));
+      return;
+    }
 
-      const parking = await Parking.findById(id)
+    const session = await mongoose.startSession();
 
-      parking.isOccupied = false;
+    try {
+      //TODO: make the payment => calculate bill by making substraction of dates and multiplication
+      await session.startTransaction();
 
-      const { updateOccupation } = await Occupation.findByIdAndUpdate(occupation._id, {
-        end: Date.now(),
-      });
+      const end = Date.now();
 
-      // ToDo: Make the payment
+      const bill = parseFloat(
+        (
+          (moment(end).diff(moment(occupation.start), 'seconds') *
+            parking.price) /
+          3600
+        ).toFixed(2),
+      );
+
+      const [updatedOccupation] = await Promise.all([
+        Occupation.findByIdAndUpdate(
+          occupation._id,
+          { end, bill },
+          { session, new: true },
+        ),
+        Parking.updateOne(
+          { _id: parking._id },
+          { isOccupied: false },
+          { session, runValidators: false, new: true },
+        ),
+      ]);
+
+      const returnedOccupation = {
+        ...updatedOccupation._doc,
+        client: {
+          _id: userId,
+          username,
+          email,
+        },
+        parking: {
+          _id: id,
+          name: parking.name,
+        },
+      };
+
+      //TODO: send email (sms ?) to the owner of the parking saying that the reservation has ended.
 
       res.status(200).json({
         status: 'success',
         message: 'You successfully finished your reservation.',
-        data: { occupation: updateOccupation },
+        data: { occupation: returnedOccupation },
       });
-
-    },
-
+      await session.commitTransaction();
+    } catch (err) {
+      await session.abortTransaction();
+      next(err);
+    } finally {
+      await session.endSession();
+    }
+  },
 );
 
 exports.createParking = catchAsync(

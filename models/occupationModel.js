@@ -33,6 +33,9 @@ const occupationSchema = new mongoose.Schema({
     type: Schema.ObjectId,
     ref: 'Parking',
   },
+  bill: {
+    type: Number,
+  },
   //creditCard: {
   //  type: Schema.ObjectId,
   //  ref: 'creditCard',

@@ -10,7 +10,6 @@ const { TWILIO_CLIENT } = require('./globals');
 const { Server } = require('http');
 const multer = require('multer');
 const { promisify } = require('util');
-const User = require('../models/userModel');
 
 const {
   env: { TWILIO_PHONE_NUMBER, JWT_SECRET },
@@ -299,16 +298,16 @@ exports.getToken = req => {
   return token;
 };
 
-exports.connectUser = async token => {
+exports.connectUser = async (userModel, token) => {
   // 1) Verify the token : errors that can be thrown in the process and catched by catchAsync
   //  JSONWebTokenError : invalid token
   //  TokenExpiredError : the token has expired
   const decoded = await promisify(jwt.verify)(token, JWT_SECRET);
 
   // 2) Check if the user still exists
-  const currentUser = await User.findById(decoded.id).select(
-    '+role +passwordChangedAt +isConfirmed +isEmailConfirmed',
-  );
+  const currentUser = await userModel
+    .findById(decoded.id)
+    .select('+role +passwordChangedAt +isConfirmed +isEmailConfirmed');
   if (!currentUser)
     throw new AppError(
       "The requested account doesn't exist or was deleted.",
