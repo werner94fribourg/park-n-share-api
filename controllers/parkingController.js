@@ -217,9 +217,7 @@ exports.getParking = catchAsync(async (req, res, next) => {
     !parking ||
     (req.user && parking.owner._id.valueOf() !== req.user._id.valueOf())
   ) {
-    next(
-      new AppError("The requested parking doesn't exist or was deleted.", 404),
-    );
+    next(new AppError("The requested parking doesn't exist.", 404));
     return;
   }
 

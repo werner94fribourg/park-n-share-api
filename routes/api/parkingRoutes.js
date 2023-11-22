@@ -432,6 +432,19 @@ router
  *                   properties:
  *                     parking:
  *                       $ref: '#/components/schemas/Parking'
+ *       404:
+ *         description: Non existing parking
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: fail
+ *                 message:
+ *                   type: string
+ *                   example: The requested parking doesn't exist.
  *       500:
  *         description: Internal Server Error
  *         content:
@@ -491,6 +504,19 @@ router.route('/:id').get(checkConnected, getParking);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/RolePermissionError'
+ *       404:
+ *         description: Non existing parking
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: fail
+ *                 message:
+ *                   type: string
+ *                   example: The requested parking doesn't exist.
  *       500:
  *         description: Internal Server Error
  *         content:
@@ -504,12 +530,244 @@ router
   .route('/:id/validate')
   .patch(protect, restrictTo('admin'), validateParking);
 
-// ToDO: Swagger
+/**
+ * @swagger
+ * /parkings/{id}/start-reservation:
+ *   patch:
+ *     tags:
+ *       - Parking
+ *     summary: Route used to reserve a parking (accessible to clients and providers only)
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         description: The id of the parking we want to reserve
+ *         required: true
+ *         type: string
+ *     responses:
+ *       200:
+ *         description: The new created occupation of the parking
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     occupation:
+ *                       type: object
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                           example: 654ca08c20d9213ef42b9443
+ *                         start:
+ *                           type: string
+ *                           example: "2023-11-22T12:23:24.012Z"
+ *                         client:
+ *                           type: object
+ *                           properties:
+ *                             _id:
+ *                               type: string
+ *                               example: 654ca08c20d9213ef42b9443
+ *                             username:
+ *                               type: string
+ *                               example: johndoe23
+ *                             email:
+ *                               type: string
+ *                               example: johndoe23@example.com
+ *                         parking:
+ *                           type: object
+ *                           properties:
+ *                             _id:
+ *                               type: string
+ *                               example: 6554db94e474b43b04d7b2d2
+ *                             name:
+ *                               type: string
+ *                               example: Beautiful parking in fribourg
+ *       400:
+ *         description: Invalid requests done by the user
+ *         content:
+ *           application/json:
+ *             examples:
+ *               ownParkingReservationExample:
+ *                 summary: Own parking reservation attempt
+ *                 value:
+ *                   status: fail
+ *                   message: You can't reserve your own parkings.
+ *               parkingOccupiedExample:
+ *                 summary: Already occupied parking reservation attempt
+ *                 value:
+ *                   status: fail
+ *                   message: The requested parking is already occupied.
+ *       401:
+ *         description: User login problems
+ *         content:
+ *           application/json:
+ *             examples:
+ *               notLoggedInExample:
+ *                 $ref: '#/components/examples/notLoggedInExample'
+ *               accountNotFoundExample:
+ *                 $ref: '#/components/examples/accountNotFoundExample'
+ *               passwordChangedExample:
+ *                 $ref: '#/components/examples/passwordChangedExample'
+ *               InvalidTokenExample:
+ *                 $ref: '#/components/examples/InvalidTokenExample'
+ *               tokenExpiredExample:
+ *                 $ref: '#/components/examples/tokenExpiredExample'
+ *       403:
+ *         description: Forbidden access due to role
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/RolePermissionError'
+ *       404:
+ *         description: Non existing parking
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: fail
+ *                 message:
+ *                   type: string
+ *                   example: The requested parking doesn't exist.
+ *       500:
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ServerError'
+ *     security:
+ *       - bearerAuth: []
+ */
 router
   .route('/:id/start-reservation')
   .patch(protect, restrictTo('client', 'provider'), startReservation);
 
-// ToDO: Swagger
+/**
+ * @swagger
+ * /parkings/{id}/end-reservation:
+ *   patch:
+ *     tags:
+ *       - Parking
+ *     summary: Route used to end a parking reservation (accessible to clients and providers only)
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         description: The id of the parking we want to reserve
+ *         required: true
+ *         type: string
+ *     responses:
+ *       200:
+ *         description: The updated occupation of the parking
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     occupation:
+ *                       type: object
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                           example: 654ca08c20d9213ef42b9443
+ *                         start:
+ *                           type: string
+ *                           example: "2023-11-22T12:23:24.012Z"
+ *                         end:
+ *                           type: string
+ *                           example: 2023-11-22T12:23:29.491Z
+ *                         bill:
+ *                           type: number
+ *                           example: 2.55
+ *                         client:
+ *                           type: object
+ *                           properties:
+ *                             _id:
+ *                               type: string
+ *                               example: 654ca08c20d9213ef42b9443
+ *                             username:
+ *                               type: string
+ *                               example: johndoe23
+ *                             email:
+ *                               type: string
+ *                               example: johndoe23@example.com
+ *                         parking:
+ *                           type: object
+ *                           properties:
+ *                             _id:
+ *                               type: string
+ *                               example: 6554db94e474b43b04d7b2d2
+ *                             name:
+ *                               type: string
+ *                               example: Beautiful parking in fribourg
+ *       400:
+ *         description: Non-reserved parking end reservation attempt
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: fail
+ *                 message:
+ *                   type: string
+ *                   example: You haven't reserved this parking.
+ *       401:
+ *         description: User login problems
+ *         content:
+ *           application/json:
+ *             examples:
+ *               notLoggedInExample:
+ *                 $ref: '#/components/examples/notLoggedInExample'
+ *               accountNotFoundExample:
+ *                 $ref: '#/components/examples/accountNotFoundExample'
+ *               passwordChangedExample:
+ *                 $ref: '#/components/examples/passwordChangedExample'
+ *               InvalidTokenExample:
+ *                 $ref: '#/components/examples/InvalidTokenExample'
+ *               tokenExpiredExample:
+ *                 $ref: '#/components/examples/tokenExpiredExample'
+ *       403:
+ *         description: Forbidden access due to role
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/RolePermissionError'
+ *       404:
+ *         description: Non existing parking
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: fail
+ *                 message:
+ *                   type: string
+ *                   example: The requested parking doesn't exist.
+ *       500:
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ServerError'
+ *     security:
+ *       - bearerAuth: []
+ */
 router
   .route('/:id/end-reservation')
   .patch(protect, restrictTo('client', 'provider'), endReservation);
