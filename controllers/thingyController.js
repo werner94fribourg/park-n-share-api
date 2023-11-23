@@ -262,3 +262,103 @@ exports.setLEDColor = catchAsync(
     publishToMQTT(mqttClient, topic, message, res);
   },
 );
+
+function generateTemperatureRating(meanTemperature) {
+  // Define the optimal temperature range
+  const optimalMinTemperature = 20;
+  const optimalMaxTemperature = 25;
+
+  // Calculate the difference between the mean temperature and the optimal range
+  const temperatureDifference = Math.abs(
+    meanTemperature - (optimalMinTemperature + optimalMaxTemperature) / 2,
+  );
+
+  // Define a threshold for rating (you can adjust this based on your preference)
+  const ratingThreshold = 3;
+
+  // Calculate the rating on a 5-star scale based on the difference
+  if (temperatureDifference <= ratingThreshold) {
+    return 5; // 5 stars if the temperature is within the optimal range or very close
+  } else {
+    // Calculate a linearly decreasing rating for temperatures outside the optimal range
+    const rating = 5 - (temperatureDifference - ratingThreshold) / 5;
+    return Math.max(1, rating); // Ensure the rating is at least 1 star
+  }
+}
+
+exports.getRating = catchAsync(async (req, res, next) => {
+  const deviceId = req.params.thingyId;
+  let getTempMeanQuery = constructStatisticalQueryOnProperty(
+    'pnsBucket',
+    '1y',
+    'thingy91',
+    deviceId,
+    'TEMP',
+    'mean',
+  );
+  let getHumidMeanQuery = constructStatisticalQueryOnProperty(
+    'pnsBucket',
+    '1y',
+    'thingy91',
+    deviceId,
+    'HUMID',
+    'mean',
+  );
+  let getCO2MeanQuery = constructStatisticalQueryOnProperty(
+    'pnsBucket',
+    '1y',
+    'thingy91',
+    deviceId,
+    'CO2_EQUIV',
+    'mean',
+  );
+  let getAirQualMeanQuery = constructStatisticalQueryOnProperty(
+    'pnsBucket',
+    '1y',
+    'thingy91',
+    deviceId,
+    'AIR_QUAL',
+    'mean',
+  );
+  let getAirPressMeanQuery = constructStatisticalQueryOnProperty(
+    'pnsBucket',
+    '1y',
+    'thingy91',
+    deviceId,
+    'AIR_PRESS',
+    'mean',
+  );
+
+  let tempRows = [];
+  let humidRows = [];
+  let co2Rows = [];
+  let airQualRows = [];
+  let airPressRows = [];
+
+  try {
+    tempRows = await getQueryRows(getTempMeanQuery);
+    humidRows = await getQueryRows(getHumidMeanQuery);
+    co2Rows = await getQueryRows(getCO2MeanQuery);
+    airQualRows = await getQueryRows(getAirQualMeanQuery);
+    airPressRows = await getQueryRows(getAirPressMeanQuery);
+  } catch (error) {
+    next(
+      new AppError(
+        `Oops, something went wrong with one of the following queries: ${getTempMeanQuery}, ${getHumidMeanQuery}, ${getCO2MeanQuery}, ${getAirQualMeanQuery}, ${getAirPressMeanQuery}. Error: ${error}`,
+        500,
+      ),
+    );
+    return null;
+  }
+
+  const tempMean = tempRows[0]._value;
+  // const humidMean = humidRows[0]._value;
+  // const co2Mean = co2Rows[0]._value;
+  // const airQualMean = airQualRows[0]._value;
+  // const airPressMean = airPressRows[0]._value;
+
+  res.status(200).json({
+    status: 'success',
+    data: { TEMP: generateTemperatureRating(20) },
+  });
+});

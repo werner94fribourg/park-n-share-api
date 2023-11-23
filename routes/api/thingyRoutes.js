@@ -10,6 +10,7 @@ const {
   getButtonTimer,
   setBuzzer,
   setLEDColor,
+  getRating,
 } = require('../../controllers/thingyController');
 
 /**
@@ -340,5 +341,7 @@ router.route('/:thingyId/properties/BUZZER/:setting').post(setBuzzer);
  *               message: An error occurred while processing the request.
  */
 router.route('/:thingyId/properties/LED/setColor/:color').post(setLEDColor);
+
+router.route('/:thingyId/rating').get(getRating);
 
 module.exports = router;
