@@ -335,7 +335,7 @@ const router = Router();
  */
 router
   .route('/')
-  .get(handleParkingQuery, checkConnected, getAllParkings)
+  .get(checkConnected, handleParkingQuery, getAllParkings)
   .post(
     protect,
     restrictTo('client', 'provider'),

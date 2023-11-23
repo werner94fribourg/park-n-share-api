@@ -41,6 +41,18 @@ exports.handleParkingQuery = catchAsync(
 
     const queryObj = {};
 
+    if (req?.user?.role === 'admin' && query.isValidated) {
+      if (
+        !checkBoolean(
+          query.isValidated,
+          'Please provide true or false for the validation variable.',
+          next,
+        )
+      )
+        return;
+      queryObj.isValidated = setBoolean(query.isValidated);
+    }
+
     if (query.isOccupied) {
       if (
         !checkBoolean(
@@ -146,10 +158,13 @@ exports.validateParking = catchAsync(
     }
 
     // set isValidate to true
-    parking.isValidate = true;
-
-    // save the updated parking model
-    await parking.save();
+    const updatedParking = await Parking.findByIdAndUpdate(
+      id,
+      {
+        isValidated: true,
+      },
+      { new: true },
+    ).select('+isValidated');
 
     // Change the status of the owner to provider
     const owner = await User.findByIdAndUpdate(parking.owner, {
@@ -172,7 +187,9 @@ exports.validateParking = catchAsync(
     }
     parking.generateFileAbsolutePath();
 
-    res.status(200).json({ status: 'success', data: { parking } });
+    res
+      .status(200)
+      .json({ status: 'success', data: { parking: updatedParking } });
   },
 );
 
@@ -183,7 +200,7 @@ exports.getAllParkings = catchAsync(
    * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
    */
   async (req, res) => {
-    if (!req.own) {
+    if (!req.own && req?.user?.role !== 'admin') {
       req.query.isValidated = true;
     }
     const parkings = await Parking.find({
@@ -208,16 +225,26 @@ exports.getParking = catchAsync(async (req, res, next) => {
     params: { id },
   } = req;
   const queryObj = {};
-  if (!req.user) queryObj.isValidated = true;
 
-  const parking = await queryById(Parking, id, queryObj, {
-    path: 'owner',
-    select: '_id username photo',
-  });
+  if (!req.user && req?.user?.role !== 'admin') queryObj.isValidated = true;
+
+  const selectFields = req?.user?.role === 'admin' ? '+isValidated' : '';
+  const parking = await queryById(
+    Parking,
+    id,
+    queryObj,
+    {
+      path: 'owner',
+      select: '_id username photo',
+    },
+    selectFields,
+  );
 
   if (
     !parking ||
-    (req.user && parking.owner._id.valueOf() !== req.user._id.valueOf())
+    (req.user &&
+      req.user.role !== 'admin' &&
+      parking.owner._id.valueOf() !== req.user._id.valueOf())
   ) {
     next(new AppError("The requested parking doesn't exist.", 404));
     return;
