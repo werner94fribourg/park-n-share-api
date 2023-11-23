@@ -52,7 +52,7 @@ router.route('/:thingyId').get(getThingDescription);
 
 /**
  * @swagger
- * /{thingyId}/properties/{property}:
+ * /things/{thingyId}/properties/{property}:
  *   get:
  *     tags:
  *       - Thingy
@@ -102,7 +102,7 @@ router.route('/:thingyId/properties/:property').get(getProperty);
 
 /**
  * @swagger
- * /{thingyId}/properties/BUTTON/timer:
+ * /things/{thingyId}/properties/BUTTON/timer:
  *   get:
  *     tags:
  *       - Thingy
@@ -175,7 +175,7 @@ router.route('/:thingyId/properties/BUTTON/timer').get(getButtonTimer);
 
 /**
  * @swagger
- * /{thingyId}/properties/{property}/statistics/{statistic}:
+ * /things/{thingyId}/properties/{property}/statistics/{statistic}:
  *   get:
  *     tags:
  *       - Thingy
@@ -244,7 +244,7 @@ router
 
 /**
  * @swagger
- * /{thingyId}/properties/BUZZER/{setting}:
+ * /things/{thingyId}/properties/BUZZER/{setting}:
  *   post:
  *     tags:
  *       - Thingy
@@ -294,7 +294,7 @@ router.route('/:thingyId/properties/BUZZER/:setting').post(setBuzzer);
 
 /**
  * @swagger
- * /{thingyId}/properties/LED/setColor/{color}:
+ * /things/{thingyId}/properties/LED/setColor/{color}:
  *   post:
  *     tags:
  *       - Thingy
