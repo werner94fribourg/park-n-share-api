@@ -9,11 +9,12 @@ const thingyRouter = require('./api/thingyRoutes');
 
 /**
  * The main router of the application.
- * @typedef {Router}
+ * @type {Router}
  */
 const router = Router();
 
 router.use('/users', userRouter);
 router.use('/things', thingyRouter);
+
 
 module.exports = router;

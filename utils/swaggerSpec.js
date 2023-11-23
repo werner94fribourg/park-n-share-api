@@ -2,11 +2,11 @@
  * Swagger specification object generation.
  * @module swaggerSpec
  */
+const { API_ROUTE } = require('./globals');
 const fs = require('fs');
 const swaggerJsDoc = require('swagger-jsdoc');
-const { SwaggerUiOptions } = require('swagger-ui-express');
-const { API_ROUTE } = require('./globals');
 const { version } = JSON.parse(fs.readFileSync(`${__dirname}/../package.json`));
+
 const {
   env: { API_URL },
 } = process;
@@ -30,8 +30,12 @@ const options = {
     ],
     tags: [
       {
+        name: 'Authentication',
+        description: 'All operations related to user authentication',
+      },
+      {
         name: 'User',
-        description: 'All operations related to user management.',
+        description: 'All operations related to user management',
       },
       {
         name: 'Thingy',
@@ -53,7 +57,7 @@ const options = {
 
 /**
  * The swagger specification object.
- * @type {SwaggerUiOptions}
+ * @type {import('swagger-ui-express').SwaggerUiOptions}
  */
 const swaggerSpec = swaggerJsDoc(options);
 

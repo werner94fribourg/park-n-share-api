@@ -13,6 +13,7 @@ const xss = require('xss-clean');
 const hpp = require('hpp');
 const compression = require('compression');
 const swaggerUI = require('swagger-ui-express');
+const bodyParser = require('body-parser');
 
 const swaggerSpec = require('./utils/swaggerSpec');
 const apiRouter = require('./routes/apiRoutes');
@@ -21,7 +22,7 @@ const {
   PARAMETER_WHITELIST,
   API_ROUTE,
   PUBLIC_FOLDER,
-  FRONT_END_URL,
+  FRONTEND_URL,
 } = require('./utils/globals');
 const AppError = require('./utils/classes/AppError');
 const errorHandler = require('./controllers/errorController');
@@ -35,9 +36,9 @@ const {
 // app.enable('trust proxy');
 
 // Set static directory
-app.use(express.static(path.join(__dirname, PUBLIC_FOLDER)));
+app.use('/public', express.static(path.join(__dirname, PUBLIC_FOLDER)));
 
-// Set view template engine (used for e-mails)
+// Set view template engine (used for emails)
 app.set('view engine', 'ejs');
 
 // Dev logging
@@ -48,8 +49,8 @@ app.use(helmet());
 app.use(helmet.crossOriginResourcePolicy({ policy: 'cross-origin' }));
 
 // Set cross origin resource sharing
-app.use(cors({ credentials: true, origin: FRONT_END_URL })); // GET and POST
-app.options('*', cors({ credentials: true, origin: FRONT_END_URL })); // OPTIONS CHECK BEFORE PATCH, PUT AND DELETE
+app.use(cors({ credentials: true, origin: FRONTEND_URL })); // GET and POST
+app.options('*', cors({ credentials: true, origin: FRONTEND_URL })); // OPTIONS CHECK BEFORE PATCH, PUT AND DELETE
 
 // Limit nb requests possible to API (protect from DOS attacks)
 const limiter = rateLimit({
@@ -66,6 +67,9 @@ app.use('/', limiter);
 
 // JSON body content reading and limitation of size to max 10kb
 app.use(express.json({ limit: '10kb' }));
+
+// body parser for content sent as multipart/form-data
+app.use(bodyParser.json());
 
 // Encoded url content reading and limitation of size to max 10kb
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
@@ -102,7 +106,8 @@ app.route('/docs.json').get((_, res) => {
 
 app.use('/api/docs', swaggerUI.serve, swaggerUI.setup(swaggerSpec));
 
-/* TODO: fix redirection to non existing routes in the api
+/*
+TODO: fix redirection to non existing routes in the api
 app.use('/api/docs/*', (req, _, next) => {
   next(new AppError(`Cannot find ${req.originalUrl} on this server!`, 404));
 });

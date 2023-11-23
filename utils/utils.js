@@ -2,13 +2,22 @@
  * All utilities functions used in the application.
  * @module utils
  */
-const { Server } = require('http');
-const { Connection } = require('mongoose');
-const mongoose = require('mongoose');
-const { Response } = require('express');
 const AppError = require('./classes/AppError');
+
 const { Point } = require('@influxdata/influxdb-client');
 const { INFLUX } = require('./globals');
+
+const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
+const { TWILIO_CLIENT } = require('./globals');
+const { Server } = require('http');
+const multer = require('multer');
+
+const {
+  env: { TWILIO_PHONE_NUMBER },
+} = process;
+
 
 /**
  * Function used to handle mongoose invalid requests generating CastError.
@@ -53,8 +62,7 @@ exports.handleValidationErrorDB = error => {
  * Function used to handle requests containing an invalid JWT authentication token.
  * @returns {AppError} An invalid JWT AppError object with a 401 status code.
  */
-exports.handleJWTError = () =>
-  new AppError('Invalid token. Please log in again!', 401);
+exports.handleJWTError = () => new AppError('Invalid token!', 401);
 
 /**
  * Function used to handler requests containing an invalid expired JWT authentication token.
@@ -66,7 +74,7 @@ exports.handleJWTExpiredError = () =>
 /**
  * Function used to handle the respone object returned to the client when the server is in dev mode.
  * @param {Error} error The error object for which we want to send a response.
- * @param {Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+ * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
  */
 exports.sendErrorDev = (error, res) => {
   const { statusCode, status, message, stack } = error;
@@ -76,7 +84,7 @@ exports.sendErrorDev = (error, res) => {
 /**
  * Function used to handle the response object returned to the client when the server is in prod mode.
  * @param {Error} err the error object for which we want to send a response.
- * @param {Response} res the response object of the Express framework, used to handle the response we will give back to the end user.
+ * @param {import('express').Response} res the response object of the Express framework, used to handle the response we will give back to the end user.
  */
 exports.sendErrorProd = (err, res) => {
   if (err.isOperational) {
@@ -90,13 +98,13 @@ exports.sendErrorProd = (err, res) => {
   // Send generic message
   res
     .status(500)
-    .json({ status: 'error', message: 'Something went wrong. Try Again !' });
+    .json({ status: 'error', message: 'Something went wrong. Try Again!' });
 };
 
 /**
  * Function used to gracefully shut down the server in the case of a fatal unhandled error happening on it.
  * @param {Server} server The HTTP server we want to gracefully shut down.
- * @param {Connection} dbConnection The opened mongoose db connection we want to shut down simultaneously as the server.
+ * @param {mongoose.Connection} dbConnection The opened mongoose db connection we want to shut down simultaneously as the server.
  * @param {string} message The error message we want to display when we shut down the server.
  * @param {Error} error The unhandled error that has caused the server to crash.
  */
@@ -292,3 +300,71 @@ exports.constructStatisticalQueryOnProperty = (
   |> group(columns: ["_field"])
   |> ${statistic}()`;
 };
+
+* Function used to generate a jwt authentication for an user.
+ * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+ * @param {string} id the id of the user for whom we want to create a jwt authentication token.
+ * @returns {Object} an object containing the response object that will be sent to the user and the cookie options for setting the jwt as httpOnly cookie.
+ */
+exports.createSendToken = (req, id) => {
+  const token = jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN,
+  });
+
+  const cookieOptions = {
+    expires: new Date(
+      Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 60 * 600 * 1000,
+    ),
+    httpOnly: true,
+    sameSite: 'none',
+    secure: req.secure || req.header('x-forwarded-proto') === 'https',
+    domain: req.get('origin'),
+  };
+
+  return { resObject: { status: 'success', token }, cookieOptions };
+};
+
+/**
+ * Function used to send a SMS to an user.
+ * @param {User} user The user to whom we want to send a SMS.
+ */
+exports.sendPinCode = async user => {
+  const [pinCode, pinCodeExpires] = user.createPinCode();
+  await user.save({ validateBeforeSave: false });
+  TWILIO_CLIENT.messages.create({
+    from: TWILIO_PHONE_NUMBER,
+    to: user.phone,
+    body: `${pinCode}`,
+  });
+
+  return pinCodeExpires;
+};
+
+/**
+ * Function used to generate a random token link that will be sent among an email.
+ * @returns {string[]} The token that will be contained in the link and its hashed version that will be stored in the database.
+ */
+exports.createLinkToken = () => {
+  const token = crypto.randomBytes(32).toString('hex');
+
+  return [token, crypto.createHash('sha256').update(token).digest('hex')];
+};
+
+/**
+ * Multer object used to store files into the file system when they are sent in a form.
+ * @type {import('multer').Multer}
+ */
+exports.uploadImage = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req, file, callback) => {
+    const { mimetype } = file;
+    if (mimetype.startsWith('image')) {
+      callback(null, true);
+      return;
+    }
+    callback(
+      new AppError('Not an image!Please upload only images.', 400),
+      false,
+    );
+  },
+});
