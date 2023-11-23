@@ -10,6 +10,8 @@ const {
   env: { ACCOUNT_SID, TWILIO_AUTH_TOKEN },
 } = process;
 
+const Influx = require('../utils/classes/Influx');
+
 /**
  * Base URL of the API.
  * @type {string}
@@ -48,6 +50,12 @@ exports.BACKEND_URL = 'http://localhost:3001';
  * @type {string[]}
  */
 exports.PARAMETER_WHITELIST = [];
+
+
+exports.INFLUX_ORG = 'pnsOrg';
+exports.INFLUX_BUCKET = 'pnsBucket';
+
+exports.INFLUX = new Influx(this.INFLUX_ORG, this.INFLUX_BUCKET);
 
 const PASSWORD_VALIDATOR = new PasswordValidator();
 
@@ -92,3 +100,4 @@ exports.CONFIRMATION_DELAY = 5 * 60 * 1000; // 5 minutes
  * @type {number}
  */
 exports.EMAIL_CONFIRMATION_DELAY = 10 * 24 * 60 * 60 * 1000; // 10 days
+

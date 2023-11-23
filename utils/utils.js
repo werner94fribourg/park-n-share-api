@@ -3,6 +3,10 @@
  * @module utils
  */
 const AppError = require('./classes/AppError');
+
+const { Point } = require('@influxdata/influxdb-client');
+const { INFLUX } = require('./globals');
+
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
@@ -13,6 +17,7 @@ const multer = require('multer');
 const {
   env: { TWILIO_PHONE_NUMBER },
 } = process;
+
 
 /**
  * Function used to handle mongoose invalid requests generating CastError.
@@ -133,7 +138,170 @@ exports.catchAsync = fn => (req, res, next) => {
 };
 
 /**
- * Function used to generate a jwt authentication for an user.
+ * Publishes a message to an MQTT topic and sends a response.
+ * @param {import('mqtt').Client} mqttClient - The MQTT client to publish the message.
+ * @param {string} topic - The MQTT topic to which the message will be published.
+ * @param {string} message - The message to publish.
+ * @param {import('express').Response} res - The response object to send a status back to the client.
+ * @function
+ */
+exports.publishToMQTT = (mqttClient, topic, message, res) => {
+  mqttClient.publish(topic, message, error => {
+    if (error) {
+      console.error(`Error publishing message: ${message} -> ${error}`);
+    } else {
+      console.log('Successfully published the following message: ', message);
+      res.status(200).json({
+        status: 'success',
+        data: { message },
+      });
+    }
+  });
+};
+
+/**
+ * Sends query results from InfluxDB to the client.
+ * @param {import('express').Response} res - The response object to send data back to the client.
+ * @param {string} fluxQuery - The Flux query to execute.
+ * @function
+ */
+exports.sendQueryResults = (res, fluxQuery) => {
+  const result = [];
+
+  INFLUX.queryClient.queryRows(fluxQuery, {
+    next: (row, tableMeta) => {
+      const rowObject = tableMeta.toObject(row);
+      result.push({
+        device: rowObject.device,
+        measurement: rowObject._measurement,
+        property: rowObject._field,
+        value: rowObject._value,
+        time: rowObject._time,
+      });
+    },
+    error: error => {
+      res.status(500).json({
+        status: 'error',
+        message: `An error occurred while fetching data: ${error}`,
+      });
+    },
+    complete: () => {
+      res.status(200).json({
+        status: 'success',
+        data: result,
+      });
+    },
+  });
+};
+
+/**
+ * Retrieves query rows from InfluxDB as a promise.
+ * @param {string} fluxQuery - The Flux query to execute.
+ * @returns {Promise<Array>} A promise that resolves to an array of query results.
+ * @function
+ */
+exports.getQueryRows = fluxQuery => {
+  return new Promise((resolve, reject) => {
+    let result = [];
+
+    INFLUX.queryClient.queryRows(fluxQuery, {
+      next: (row, tableMeta) => {
+        const rowObject = tableMeta.toObject(row);
+        result.push(rowObject);
+      },
+      error: error => {
+        reject(`An error occurred while fetching data: ${error}`);
+      },
+      complete: () => {
+        resolve(result);
+      },
+    });
+  });
+};
+
+/**
+ * Adds a float property to the InfluxDB with the tag corresponding to the deviceId.
+ * @param {Object} message - The MQTT message containing the property information.
+ * @function
+ */
+exports.addFloatProperty = async (deviceId, message) => {
+  let point = new Point('thingy91')
+    .tag('device', deviceId)
+    .floatField(message.appId, message.data)
+    .timestamp(new Date().getTime());
+
+  INFLUX.writeClient.writePoint(point);
+};
+
+/**
+ * Adds an integer property to the InfluxDB with the tag corresponding to the deviceId.
+ * @param {Object} message - The MQTT message containing the property information.
+ * @function
+ */
+exports.addIntegerProperty = async (deviceId, message) => {
+  if (message.data == '1') {
+    let point = new Point('thingy91')
+      .tag('device', deviceId)
+      .intField(message.appId, message.data)
+      .timestamp(new Date().getTime());
+
+    INFLUX.writeClient.writePoint(point);
+    console.log(
+      `Added to tag ${deviceId} the following data: `,
+      JSON.stringify(message, null, 2),
+    );
+  }
+};
+
+/**
+ * Constructs a basic Flux query for retrieving property data from InfluxDB.
+ * @param {string} bucket - The InfluxDB bucket.
+ * @param {string} interval - The time interval for the query.
+ * @param {string} measurement - The measurement (e.g., 'thingy91').
+ * @param {string} deviceId - The device ID to filter data by.
+ * @param {string} field - The field (e.g., 'TEMP').
+ * @returns {string} The constructed Flux query.
+ * @function
+ */
+exports.constructBasicPropertyQuery = (
+  bucket,
+  interval,
+  measurement,
+  deviceId,
+  field,
+) => {
+  return `from(bucket: "${bucket}")
+  |> range(start: -${interval})
+  |> filter(fn: (r) => r._measurement == "${measurement}" and r._field == "${field}" and r.device == "${deviceId}")`;
+};
+
+/**
+ * Constructs a statistical Flux query for property data from InfluxDB.
+ * @param {string} bucket - The InfluxDB bucket.
+ * @param {string} interval - The time interval for the query.
+ * @param {string} measurement - The measurement (e.g., 'thingy91').
+ * @param {string} deviceId - The device ID to filter data by.
+ * @param {string} field - The field (e.g., 'TEMP').
+ * @param {string} statistic - The statistical function (e.g., 'mean' 'stddev').
+ * @returns {string} The constructed Flux query.
+ * @function
+ */
+exports.constructStatisticalQueryOnProperty = (
+  bucket,
+  interval,
+  measurement,
+  deviceId,
+  field,
+  statistic,
+) => {
+  return `from(bucket: "${bucket}")
+  |> range(start: -${interval})
+  |> filter(fn: (r) => r._measurement == "${measurement}" and r._field == "${field}" and r.device == "${deviceId}")
+  |> group(columns: ["_field"])
+  |> ${statistic}()`;
+};
+
+* Function used to generate a jwt authentication for an user.
  * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
  * @param {string} id the id of the user for whom we want to create a jwt authentication token.
  * @returns {Object} an object containing the response object that will be sent to the user and the cookie options for setting the jwt as httpOnly cookie.
