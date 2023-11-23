@@ -188,10 +188,12 @@ exports.getAllParkings = catchAsync(
     }
     const parkings = await Parking.find({
       ...req.query,
-    }).populate({
-      path: 'owner',
-      select: '_id username email',
-    });
+    })
+      .populate({
+        path: 'owner',
+        select: '_id username email',
+      })
+      .select(req.own ? '+isValidated' : '');
 
     parkings.forEach(parking => {
       parking.generateFileAbsolutePath();
