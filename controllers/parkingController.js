@@ -9,6 +9,7 @@ const {
   setBoolean,
   checkLocation,
   queryById,
+  waitClickButton,
 } = require('../utils/utils');
 const Parking = require('../models/parkingModel');
 const Occupation = require('../models/occupationModel');
@@ -29,6 +30,10 @@ const User = require('../models/userModel');
 const Email = require('../utils/classes/Email');
 const mongoose = require('mongoose');
 const moment = require('moment-timezone');
+const Thingy = require('../models/thingyModel');
+const { promisify } = require('util');
+const mqtt = require('mqtt');
+const mqttClient = require('../mqtt/mqttHandler');
 
 exports.handleParkingQuery = catchAsync(
   /**
@@ -150,7 +155,10 @@ exports.validateParking = catchAsync(
       params: { id },
     } = req;
 
-    const parking = await queryById(Parking, id);
+    const [parking, [thingy]] = await Promise.all([
+      queryById(Parking, id),
+      Thingy.aggregate([{ $sample: { size: 1 } }]),
+    ]);
 
     // Check if parking exists.
     if (!parking) {
@@ -162,6 +170,7 @@ exports.validateParking = catchAsync(
       id,
       {
         isValidated: true,
+        thingy: thingy._id,
       },
       { new: true },
     ).select('+isValidated');
@@ -322,11 +331,14 @@ exports.startReservation = catchAsync(
       {
         isValidated: true,
       },
-      {
-        path: 'owner',
-        select: '_id username email',
-      },
-      '+isOccupied',
+      [
+        {
+          path: 'owner',
+          select: '_id username email',
+        },
+        { path: 'thingy', select: 'name' },
+      ],
+      '+thingy +isOccupied',
     );
 
     // Check if parking exists.
@@ -345,6 +357,23 @@ exports.startReservation = catchAsync(
       return;
     }
 
+    // Wait that the user clicks on the associated thingy button
+    /*const client = mqtt.connect(process.env.MQTT_SERVER, {
+      username: process.env.MQTT_USR,
+      password: process.env.MQTT_PWD,
+    });*/
+
+    const {
+      thingy: { name: thingy },
+    } = parking;
+
+    console.log(
+      `Please confirm by pressing on the button of thingy ${thingy}.`,
+    );
+
+    //TODO: decomment what is in comment when we have blue-2
+    const start = await waitClickButton(mqttClient, 'blue-1' /*thingy*/);
+
     // Create an occupation for the parking
     // N.B. : a transaction is needed such that updating the occupation state of a parking and create a new occupation in the database will be done atomically
     const session = await mongoose.startSession();
@@ -356,7 +385,7 @@ exports.startReservation = catchAsync(
         Occupation.create(
           [
             {
-              start: Date.now(),
+              start,
               end: undefined,
               client: userId,
               parking: parking._id,
@@ -426,11 +455,14 @@ exports.endReservation = catchAsync(
         {
           isValidated: true,
         },
-        {
-          path: 'owner',
-          select: '_id username email',
-        },
-        '+isOccupied',
+        [
+          {
+            path: 'owner',
+            select: '_id username email',
+          },
+          { path: 'thingy', select: 'name' },
+        ],
+        '+thingy +isOccupied',
       ),
     ]);
 
@@ -445,13 +477,21 @@ exports.endReservation = catchAsync(
       return;
     }
 
-    const session = await mongoose.startSession();
+    const {
+      thingy: { name: thingy },
+    } = parking;
 
+    console.log(
+      `Please confirm by pressing on the button of thingy ${thingy}.`,
+    );
+
+    //TODO: decomment what is in comment when we have blue-2
+    const end = await waitClickButton(mqttClient, 'blue-1' /*thingy*/);
+
+    const session = await mongoose.startSession();
     try {
       //TODO: make the payment => calculate bill by making substraction of dates and multiplication
       await session.startTransaction();
-
-      const end = Date.now();
 
       const bill = parseFloat(
         (
@@ -562,8 +602,6 @@ exports.createParking = catchAsync(
     });
 
     const newParking = await Parking.findById(_id).select('-owner');
-
-    newParking.generateFileAbsolutePath();
 
     res.status(201).json({
       status: 'success',

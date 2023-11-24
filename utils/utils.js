@@ -6,6 +6,7 @@ const AppError = require('./classes/AppError');
 
 const { Point } = require('@influxdata/influxdb-client');
 const { INFLUX } = require('./globals');
+const { once } = require('events');
 
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
@@ -14,6 +15,7 @@ const { TWILIO_CLIENT } = require('./globals');
 const { Server } = require('http');
 const multer = require('multer');
 const { promisify } = require('util');
+const mqttClient = require('../mqtt/mqttHandler');
 
 const {
   env: { TWILIO_PHONE_NUMBER, JWT_SECRET },
@@ -490,4 +492,46 @@ exports.connectUser = async (userModel, token) => {
     );
 
   return currentUser;
+};
+
+exports.waitClickButton = async (mqttClient, thingy) => {
+  return new Promise((resolve, reject) => {
+    // Define a callback function to handle the 'message' event
+    const messageHandler = (topic, message) => {
+      try {
+        const data = JSON.parse(message);
+        const topicParts = topic.split('/');
+        const thingsIndex = topicParts.indexOf('things');
+
+        if (thingsIndex !== -1 && thingsIndex + 1 < topicParts.length) {
+          const device = topicParts[thingsIndex + 1];
+
+          if (device === thingy && data.appId === 'BUTTON') {
+            // Remove the listener and resolve the promise
+            mqttClient.off('message', messageHandler);
+            resolve(data.ts);
+          }
+        }
+      } catch (error) {
+        // Handle JSON parsing error
+        reject(error);
+      }
+    };
+
+    // Attach the message handler to the 'message' event
+    mqttClient.on('message', messageHandler);
+
+    // Use 'once' to wait for the first 'message' event and set a timeout
+    const timeoutId = setTimeout(() => {
+      // Remove the listener and reject the promise on timeout
+      mqttClient.off('message', messageHandler);
+      reject(new AppError('Timeout waiting for button click', 408));
+    }, 60 * 1000); // Timeout set to 60 seconds (adjust as needed)
+
+    // Use 'once' to wait for the first 'message' event
+    once(mqttClient, 'message').then(() => {
+      // Clear the timeout since the event occurred
+      clearTimeout(timeoutId);
+    });
+  });
 };

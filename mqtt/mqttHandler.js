@@ -54,15 +54,10 @@ mqttClient.on('message', async (topic, message) => {
       ['TEMP', 'CO2_EQUIV', 'HUMID', 'AIR_PRESS', 'AIR_QUAL'].includes(
         data.appId,
       )
-    ) {
+    )
       await addFloatProperty(deviceId, data);
-      // console.log('Added: ', JSON.stringify(data, null, 2));
-    } else if (data.appId == 'BUTTON') {
-      await addIntegerProperty(deviceId, data);
-    }
-  } else {
-    console.error('Invalid topic format:', topic);
-  }
+    else if (data.appId == 'BUTTON') await addIntegerProperty(deviceId, data);
+  } else console.error('Invalid topic format:', topic);
 });
 
 /**

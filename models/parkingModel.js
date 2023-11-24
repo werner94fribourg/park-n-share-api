@@ -24,6 +24,7 @@ const {
  * @property {Object} location The location (address and coordinates) of the parking slot.
  * @property {mongoose.Schema.ObjectId} owner The id reference to the owner of the parking slot.
  * @property {string[]} photos The photos of the parking slot.
+ * @property {mongoose.Schema.ObjectId} thingy The id of the thingy associated with the parking slot.
  */
 
 /**
@@ -94,6 +95,11 @@ const parkingSchema = new Schema({
       trim: true,
     },
   ],
+  thingy: {
+    type: Schema.ObjectId,
+    ref: 'Thingy',
+    select: false,
+  },
 });
 
 /**
