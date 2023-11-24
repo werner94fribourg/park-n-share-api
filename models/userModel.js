@@ -1,7 +1,7 @@
 /**
- * Definition of the User Model used in the application and generating the User Collection in the MongoDB Database.
- * @module userModel
- */
+* Definition of the User Model used in the application and generating the User Collection in the MongoDB Database.
+* @module userModel
+*/
 const {
   PASSWORD_VALIDATOR,
   CONFIRMATION_DELAY,

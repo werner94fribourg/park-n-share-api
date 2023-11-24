@@ -17,6 +17,7 @@ const bodyParser = require('body-parser');
 
 const swaggerSpec = require('./utils/swaggerSpec');
 const apiRouter = require('./routes/apiRoutes');
+
 const {
   PARAMETER_WHITELIST,
   API_ROUTE,

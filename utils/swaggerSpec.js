@@ -41,6 +41,10 @@ const options = {
         name: 'Parking',
         description: 'All operations related to parking management',
       },
+      {
+        name: 'Thingy',
+        description: 'All operations related to thingy management',
+      },
     ],
     components: {
       securitySchemes: {

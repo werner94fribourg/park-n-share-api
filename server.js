@@ -4,6 +4,7 @@
  */
 const dotenv = require('dotenv');
 dotenv.config({ path: './config.env' });
+const mqttHandler = require('./mqtt/mqttHandler');
 
 const mongoose = require('mongoose');
 const app = require('./app');
