@@ -22,9 +22,14 @@ const DB_CONNECTION = CONNECTION_STRING.replace('<UNAME>', UNAME)
 const port = process.env.PORT || 3001;
 
 // Set up the database connection
-mongoose.connect(DB_CONNECTION, {}).then(() => {
-  console.log('DB connection successful.');
-});
+mongoose
+  .connect(DB_CONNECTION, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => {
+    console.log('DB connection successful.');
+  });
 
 // Instantiate the server
 const server = app.listen(port, () => {
