@@ -122,10 +122,17 @@ class Email {
     );
   }
 
+  /**
+   * Async function used to send a confirmation to a provider that his parking request was validated by an admin.
+   */
   async sendValidatedParking() {
     await this.send('validatedParking', 'Your parking request was validated');
   }
 
+  /**
+   * Async function used to send to the owner of a parking that an user has reserved his parking.
+   * @param {string} username the username of the user that reserved the parking.
+   */
   async sendParkingReserved(username) {
     await this.send(
       'parkingReserved',
@@ -133,6 +140,10 @@ class Email {
     );
   }
 
+  /**
+   * Async function used to send to the owner of a parking that an user has ended the reservation of his parking.
+   * @param {string} username the username of the user that has ended the reservation of the parking
+   */
   async sendParkingEndReservation(username) {
     await this.send(
       'parkingEndReservation',
