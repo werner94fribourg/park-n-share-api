@@ -342,6 +342,62 @@ router.route('/:thingyId/properties/BUZZER/:setting').post(setBuzzer);
  */
 router.route('/:thingyId/properties/LED/setColor/:color').post(setLEDColor);
 
+/**
+ * @swagger
+ * /things/{thingyId}/rating:
+ *   get:
+ *     tags:
+ *       - Thingy
+ *     summary: Get the overall rating for the specified Thingy based on environmental conditions
+ *     description: Returns the overall rating and individual ratings for various environmental factors.
+ *     operationId: getRating
+ *     parameters:
+ *       - name: thingyId
+ *         in: path
+ *         description: ID of the Thingy to get the rating
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Successful operation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     TEMP:
+ *                       type: string
+ *                       example: "4.03"
+ *                       description: The rating for temperature
+ *                     HUMID:
+ *                       type: string
+ *                       example: "5.00"
+ *                       description: The rating for humidity
+ *                     AIR_QUAL:
+ *                       type: string
+ *                       example: "4.51"
+ *                       description: The rating for air quality
+ *                     CO2_EQUIV:
+ *                       type: string
+ *                       example: "4.61"
+ *                       description: The rating for CO2 equivalent
+ *                     AIR_PRESS:
+ *                       type: string
+ *                       example: "3.82"
+ *                       description: The rating for air pressure
+ *                     FinalRating:
+ *                       type: number
+ *                       format: float
+ *                       example: 4.5
+ *                       description: The overall final rating
+ */
 router.route('/:thingyId/rating').get(getRating);
 
 module.exports = router;

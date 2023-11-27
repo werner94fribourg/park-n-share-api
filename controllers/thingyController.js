@@ -9,6 +9,8 @@ const {
   getQueryRows,
   constructBasicPropertyQuery,
   constructStatisticalQueryOnProperty,
+  getLinearRating,
+  getSCurveRating,
 } = require('../utils/utils');
 const AppError = require('../utils/classes/AppError');
 const thingDescription = require('../utils/thingDescription');
