@@ -79,12 +79,22 @@ exports.GEOAPI_REVERSE_URL = exports.GEOAPI_URL + '/reverse';
  */
 exports.PARAMETER_WHITELIST = [];
 
-//TODO: Comment
+/**
+ * Name of the organisation for the InfluxDB database
+ * @type {string}
+ */
 exports.INFLUX_ORG = 'pnsOrg';
-//TODO: Comment
+
+/**
+ * InfluxDB bucket name
+ * @type {string}
+ */
 exports.INFLUX_BUCKET = 'pnsBucket';
 
-//TODO: Comment
+/**
+ * Influx DB object, used to handle all influxDB operations
+ * @type {Influx}
+ */
 exports.INFLUX = new Influx(this.INFLUX_ORG, this.INFLUX_BUCKET);
 
 const PASSWORD_VALIDATOR = new PasswordValidator();

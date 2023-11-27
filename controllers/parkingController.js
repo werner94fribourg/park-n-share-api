@@ -385,8 +385,7 @@ exports.startReservation = catchAsync(
       });
     } else console.log(message);
 
-    //TODO: decomment what is in comment when we have blue-2
-    const start = await waitClickButton(mqttClient, 'blue-1' /*thingy*/);
+    const start = await waitClickButton(mqttClient, thingy);
 
     if (sessionID) socket.emit('successful_reservation', {});
 
@@ -523,13 +522,11 @@ exports.endReservation = catchAsync(
       });
     } else console.log(message);
 
-    //TODO: decomment what is in comment when we have blue-2
-    const end = await waitClickButton(mqttClient, 'blue-1' /*thingy*/);
+    const end = await waitClickButton(mqttClient, thingy);
 
     if (sessionID) socket.emit('successful_end', {});
     //const session = await mongoose.startSession();
     try {
-      //TODO: make the payment => calculate bill by making substraction of dates and multiplication
       //await session.startTransaction();
 
       const bill = parseFloat(
