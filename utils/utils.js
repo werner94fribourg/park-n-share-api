@@ -566,3 +566,79 @@ exports.waitClickButton = async (mqttClient, thingy) => {
     });
   });
 };
+
+/**
+ * Handles the calculation of an S-curve rating based on a given value and configuration.
+ * @param {number} value - The value for which to calculate the rating.
+ * @param {object} config - Configuration object.
+ * @param {number[]} config.optimalRange - An array representing the optimal range [lower bound, upper bound].
+ * @param {number} config.slopeAboveOptimal - Slope for the S-curve decay above the optimal range.
+ * @param {number} config.slopeBelowOptimal - Slope for the S-curve decay below the optimal range.
+ * @returns {number} - A normalized 5-star rating rounded to the nearest decimal.
+ */
+exports.getSCurveRating = (value, config) => {
+  const { optimalRange, slopeAboveOptimal, slopeBelowOptimal } = config;
+
+  // Calculate the distance from the optimal range bounds
+  const distanceAbove = Math.max(0, value - optimalRange[1]); // Distance above the upper bound
+  const distanceBelow = Math.max(0, optimalRange[0] - value); // Distance below the lower bound
+
+  // Choose the maximum distance for the S-curve decay calculation
+  const distance = Math.max(distanceAbove, distanceBelow);
+
+  // Apply the S-curve decay formula with different slopes for above and below optimal range
+  const slope =
+    value >= optimalRange[0] && value <= optimalRange[1]
+      ? 0
+      : value > optimalRange[1]
+      ? slopeAboveOptimal
+      : slopeBelowOptimal;
+
+  const rating = 2 / (1 + Math.exp(slope * distance));
+
+  // Normalize the rating to a 5-star scale
+  const normalizedRating = rating * 5;
+
+  // Round the rating to the nearest decimal for clarity
+  return normalizedRating;
+};
+
+/**
+ * Handles the calculation of a linear rating based on a given value and configuration.
+ * @param {number} value - The value for which to calculate the rating.
+ * @param {object} config - Configuration object.
+ * @param {number[]} config.optimalRange - An array representing the optimal range [lower bound, upper bound].
+ * @param {number[]} config.fullRange - An array representing the full range [lower bound, upper bound].
+ * @returns {number} - A 5-star rating for values within the optimal range. A linear decay rating for values outside the optimal range.
+ */
+exports.getLinearRating = (value, config) => {
+  const { optimalRange, fullRange } = config;
+
+  // Ensure the ranges are valid
+  if (optimalRange[0] < fullRange[0] || optimalRange[1] > fullRange[1]) {
+    new AppError('Invalid range specifications.', 400);
+    return null;
+  }
+
+  // Check if the value is within the optimal range
+  if (value >= optimalRange[0] && value <= optimalRange[1]) {
+    return 5; // 5-star rating for values within the optimal range
+  } else {
+    const distanceAbove = Math.max(0, value - optimalRange[1]); // Distance above the upper bound
+    const distanceBelow = Math.max(0, optimalRange[0] - value); // Distance below the lower bound
+    const distance = Math.max(distanceAbove, distanceBelow);
+
+    const fullRangeWidth = Math.abs(fullRange[0] - fullRange[1]);
+    const optimalRangeWidth = Math.abs(optimalRange[0] - optimalRange[1]);
+
+    // Normalize the distance to a 0-1 scale based on the full range
+    const normalizedDistance =
+      distance / ((fullRangeWidth - optimalRangeWidth) / 2);
+
+    // Calculate the linear decay rating outside the optimal range
+    const rating = 5 - 5 * normalizedDistance;
+
+    // Ensure the rating is not below 0
+    return Math.max(0, rating);
+  }
+};
