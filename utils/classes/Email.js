@@ -125,6 +125,20 @@ class Email {
   async sendValidatedParking() {
     await this.send('validatedParking', 'Your parking request was validated');
   }
+
+  async sendParkingReserved(username) {
+    await this.send(
+      'parkingReserved',
+      `${username} has reserved your parking.`,
+    );
+  }
+
+  async sendParkingEndReservation(username) {
+    await this.send(
+      'parkingEndReservation',
+      `${username} has ended the reservation of your parking.`,
+    );
+  }
 }
 
 module.exports = Email;

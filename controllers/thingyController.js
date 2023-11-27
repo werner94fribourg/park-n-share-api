@@ -10,9 +10,7 @@ const {
   constructBasicPropertyQuery,
   constructStatisticalQueryOnProperty,
 } = require('../utils/utils');
-
 const AppError = require('../utils/classes/AppError');
-
 const thingDescription = require('../utils/thingDescription');
 const mqttClient = require('../mqtt/mqttHandler');
 const { INFLUX } = require('../utils/globals');
@@ -262,7 +260,7 @@ exports.setLEDColor = catchAsync(
     publishToMQTT(mqttClient, topic, message, res);
   },
 );
-
+//TODO: Comment
 function generateTemperatureRating(meanTemperature) {
   // Define the optimal temperature range
   const optimalMinTemperature = 20;
@@ -286,6 +284,7 @@ function generateTemperatureRating(meanTemperature) {
   }
 }
 
+//TODO: comment
 exports.getRating = catchAsync(async (req, res, next) => {
   const deviceId = req.params.thingyId;
   let getTempMeanQuery = constructStatisticalQueryOnProperty(

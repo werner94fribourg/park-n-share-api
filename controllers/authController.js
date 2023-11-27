@@ -120,7 +120,8 @@ exports.getPinExpiration = catchAsync(
    * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
    * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
    * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
-   */ async (req, res, next) => {
+   */
+  async (req, res, next) => {
     const {
       params: { email },
     } = req;
@@ -511,13 +512,20 @@ exports.resetPassword = catchAsync(
   },
 );
 
-exports.checkProvider = catchAsync(async (req, _, next) => {
-  const { user, query } = req;
-  query.owner = user._id;
+exports.checkProvider = catchAsync(
+  /**
+   * Middleware function used to check if the sender of a request is a provider so that he can have his own parkings when he queries the existing ones.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, _, next) => {
+    const { user, query } = req;
+    query.owner = user._id;
 
-  req.own = true;
-  next();
-});
+    req.own = true;
+    next();
+  },
+);
 
 exports.checkConnected = catchAsync(
   /**

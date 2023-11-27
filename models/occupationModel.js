@@ -10,6 +10,7 @@ const { mongoose, Schema } = require('mongoose');
  * @typedef Occupation
  * @property {Date} start The starting time of the occupation.
  * @property {Date} end The end time of the occupation.
+ * @property {mongoose.Schema.ObjectId} client The id reference to the user that occupied the parking during this time.
  * @property {mongoose.Schema.ObjectId} parking The id reference to the parking that is occupied during this time.
  */
 
@@ -18,7 +19,6 @@ const { mongoose, Schema } = require('mongoose');
  * @type {mongoose.Schema<Occupation>}
  */
 const occupationSchema = new mongoose.Schema({
-  // ToDo: finish creditCard reference
   start: {
     type: Date,
   },
@@ -36,10 +36,6 @@ const occupationSchema = new mongoose.Schema({
   bill: {
     type: Number,
   },
-  //creditCard: {
-  //  type: Schema.ObjectId,
-  //  ref: 'creditCard',
-  //},
 });
 
 /**

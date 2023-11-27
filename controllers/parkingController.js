@@ -18,7 +18,6 @@ const {
   PARKINGS_FOLDER,
   GEOAPI_REVERSE_URL,
   GEOAPI_SEARCH_URL,
-  socket_lock,
   SOCKET_CONNECTIONS,
 } = require('../utils/globals');
 const AppError = require('../utils/classes/AppError');
@@ -33,8 +32,6 @@ const Email = require('../utils/classes/Email');
 const mongoose = require('mongoose');
 const moment = require('moment-timezone');
 const Thingy = require('../models/thingyModel');
-const { promisify } = require('util');
-const mqtt = require('mqtt');
 const mqttClient = require('../mqtt/mqttHandler');
 
 exports.handleParkingQuery = catchAsync(
@@ -321,7 +318,6 @@ exports.startReservation = catchAsync(
    * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
    */
   async (req, res, next) => {
-    // ToDo: Get credit card from user
     const {
       user: { _id: userId, username, email },
       params: { id },
@@ -396,10 +392,10 @@ exports.startReservation = catchAsync(
 
     // Create an occupation for the parking
     // N.B. : a transaction is needed such that updating the occupation state of a parking and create a new occupation in the database will be done atomically
-    const session = await mongoose.startSession();
+    //const session = await mongoose.startSession();
 
     try {
-      await session.startTransaction();
+      //await session.startTransaction();
 
       const [[occupation]] = await Promise.all([
         Occupation.create(
@@ -411,12 +407,14 @@ exports.startReservation = catchAsync(
               parking: parking._id,
             },
           ],
-          { session },
+          {
+            /*session*/
+          },
         ),
         Parking.updateOne(
           { _id: parking._id },
           { isOccupied: true },
-          { session, runValidators: false },
+          { /*session,*/ runValidators: false },
         ),
       ]);
 
@@ -433,19 +431,24 @@ exports.startReservation = catchAsync(
         },
       };
 
-      // TODO: send email (sms ?) to the owner of the parking which says parking place was reserved
+      try {
+        await new Email(parking.owner).sendParkingReserved(username);
+      } catch (err) {
+        console.log(err);
+      }
 
       res.status(200).json({
         status: 'success',
         message: 'You created a new parking reservation.',
         data: { occupation: returnedOccupation },
       });
-      await session.commitTransaction();
+      //await session.commitTransaction();
     } catch (err) {
-      await session.abortTransaction();
+      //await session.abortTransaction();
+      if (sessionID) socket.emit('unsuccessful_reservation', {});
       next(err);
     } finally {
-      await session.endSession();
+      //await session.endSession();
     }
   },
 );
@@ -524,10 +527,10 @@ exports.endReservation = catchAsync(
     const end = await waitClickButton(mqttClient, 'blue-1' /*thingy*/);
 
     if (sessionID) socket.emit('successful_end', {});
-    const session = await mongoose.startSession();
+    //const session = await mongoose.startSession();
     try {
       //TODO: make the payment => calculate bill by making substraction of dates and multiplication
-      await session.startTransaction();
+      //await session.startTransaction();
 
       const bill = parseFloat(
         (
@@ -541,12 +544,12 @@ exports.endReservation = catchAsync(
         Occupation.findByIdAndUpdate(
           occupation._id,
           { end, bill },
-          { session, new: true },
+          { /*session,*/ new: true },
         ),
         Parking.updateOne(
           { _id: parking._id },
           { isOccupied: false },
-          { session, runValidators: false, new: true },
+          { /*session,*/ runValidators: false, new: true },
         ),
       ]);
 
@@ -563,19 +566,24 @@ exports.endReservation = catchAsync(
         },
       };
 
-      //TODO: send email (sms ?) to the owner of the parking saying that the reservation has ended.
+      try {
+        await new Email(parking.owner).sendParkingEndReservation(username);
+      } catch (err) {
+        console.log(err);
+      }
 
       res.status(200).json({
         status: 'success',
         message: 'You successfully finished your reservation.',
         data: { occupation: returnedOccupation },
       });
-      await session.commitTransaction();
+      //await session.commitTransaction();
     } catch (err) {
-      await session.abortTransaction();
+      //await session.abortTransaction();
+      if (sessionID) socket.emit('unsuccessful_end', {});
       next(err);
     } finally {
-      await session.endSession();
+      //await session.endSession();
     }
   },
 );
