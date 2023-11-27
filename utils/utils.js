@@ -6,6 +6,7 @@ const AppError = require('./classes/AppError');
 
 const { Point } = require('@influxdata/influxdb-client');
 const { INFLUX } = require('./globals');
+const { once } = require('events');
 
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
@@ -14,6 +15,7 @@ const { TWILIO_CLIENT } = require('./globals');
 const { Server } = require('http');
 const multer = require('multer');
 const { promisify } = require('util');
+const mqttClient = require('../mqtt/mqttHandler');
 
 const {
   env: { TWILIO_PHONE_NUMBER, JWT_SECRET },
@@ -418,6 +420,11 @@ exports.checkNumber = (field, errMessage, next) => {
   return true;
 };
 
+/**
+ *Function used to check the validity of the sent coordinates when creating a new parking.
+ * @param {number[]} coordinates An array containing the latitude and the longitude of the parking
+ * @returns {boolean} true if the coordinates are valid, false otherwise
+ */
 exports.checkLocation = coordinates => {
   if (coordinates?.length !== 2) return false;
 
@@ -430,6 +437,15 @@ exports.checkLocation = coordinates => {
   return true;
 };
 
+/**
+ * Function used to query by id a model and retrieve the resulting document.
+ * @param {mongoose.Model} Model the mongoose Model used to make the query to the database
+ * @param {string} id the id of the resource we want to retrieve from the database
+ * @param {Object} queryObj the query object, used to filter the retrieved resource with certain matching conditions
+ * @param {Object} popObj the populate object, used to populate the reference fields in the model
+ * @param {string} selectParams the list of fields we want to include in the finding of the requests
+ * @returns {mongoose.Document} the resulting document of the querying process
+ */
 exports.queryById = async (
   Model,
   id,
@@ -451,6 +467,11 @@ exports.queryById = async (
   }
 };
 
+/**
+ * Function used to retrieve the jwt token sent by an user when accessing an endpoint on the server.
+ * @param {import('express').Request} req
+ * @returns {string} the jwt token of the user making the request to an endpoint.
+ */
 exports.getToken = req => {
   const {
     headers: { authorization },
@@ -466,6 +487,12 @@ exports.getToken = req => {
   return token;
 };
 
+/**
+ * Function used to verify the jwt token sent by an user and authenticate him if it is valid.
+ * @param {mongoose.Model<User>} userModel the user model from which we want to query the decoded jwt token and authentify
+ * @param {string} token the jwt token we want to verify
+ * @returns {mongoose.Document<User>} the document representing the user in the database if the checking process is valid
+ */
 exports.connectUser = async (userModel, token) => {
   // 1) Verify the token : errors that can be thrown in the process and catched by catchAsync
   //  JSONWebTokenError : invalid token
@@ -490,4 +517,52 @@ exports.connectUser = async (userModel, token) => {
     );
 
   return currentUser;
+};
+
+/**
+ * Asynchronous function used to wait for the user to click on a thingy within a timebound of 60 seconds.
+ * @param {*} mqttClient
+ * @param {string} thingy the id of the thingy from which we want to wait that the user clicks on its button
+ * @returns {Promise<number>} a promise that resolves if the user clicks on the thingy within a delay of 60 seconds.
+ */
+exports.waitClickButton = async (mqttClient, thingy) => {
+  return new Promise((resolve, reject) => {
+    // Define a callback function to handle the 'message' event
+    const messageHandler = (topic, message) => {
+      try {
+        const data = JSON.parse(message);
+        const topicParts = topic.split('/');
+        const thingsIndex = topicParts.indexOf('things');
+
+        if (thingsIndex !== -1 && thingsIndex + 1 < topicParts.length) {
+          const device = topicParts[thingsIndex + 1];
+
+          if (device === thingy && data.appId === 'BUTTON') {
+            // Remove the listener and resolve the promise
+            mqttClient.off('message', messageHandler);
+            resolve(data.ts);
+          }
+        }
+      } catch (error) {
+        // Handle JSON parsing error
+        reject(error);
+      }
+    };
+
+    // Attach the message handler to the 'message' event
+    mqttClient.on('message', messageHandler);
+
+    // Use 'once' to wait for the first 'message' event and set a timeout
+    const timeoutId = setTimeout(() => {
+      // Remove the listener and reject the promise on timeout
+      mqttClient.off('message', messageHandler);
+      reject(new AppError('Timeout waiting for button click expired.', 408));
+    }, 60 * 1000); // Timeout set to 60 seconds (adjust as needed)
+
+    // Use 'once' to wait for the first 'message' event
+    once(mqttClient, 'message').then(() => {
+      // Clear the timeout since the event occurred
+      clearTimeout(timeoutId);
+    });
+  });
 };

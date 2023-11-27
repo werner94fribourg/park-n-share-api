@@ -5,6 +5,7 @@
 const PasswordValidator = require('password-validator');
 const TwilioSDK = require('twilio');
 const twilio = require('twilio');
+const Lock = require('./classes/Lock');
 
 const {
   env: { ACCOUNT_SID, TWILIO_AUTH_TOKEN },
@@ -78,10 +79,12 @@ exports.GEOAPI_REVERSE_URL = exports.GEOAPI_URL + '/reverse';
  */
 exports.PARAMETER_WHITELIST = [];
 
-
+//TODO: Comment
 exports.INFLUX_ORG = 'pnsOrg';
+//TODO: Comment
 exports.INFLUX_BUCKET = 'pnsBucket';
 
+//TODO: Comment
 exports.INFLUX = new Influx(this.INFLUX_ORG, this.INFLUX_BUCKET);
 
 const PASSWORD_VALIDATOR = new PasswordValidator();
@@ -128,3 +131,14 @@ exports.CONFIRMATION_DELAY = 5 * 60 * 1000; // 5 minutes
  */
 exports.EMAIL_CONFIRMATION_DELAY = 10 * 24 * 60 * 60 * 1000; // 10 days
 
+/**
+ * Socket lock object used to restrict simultanous access on the socket connection array when trying to modifying it.
+ * @type {Lock}
+ */
+exports.socket_lock = new Lock();
+
+/**
+ * Socket connection array, containing all the existing socket connections etablished between the backend and client applications.
+ * @type {Array}
+ */
+exports.SOCKET_CONNECTIONS = [];

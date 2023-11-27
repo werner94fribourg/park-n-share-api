@@ -55,6 +55,10 @@ const router = Router();
  *           type: number
  *           description: The hourly price for the parking slot rental
  *           example: 3.50
+ *         isOccupied:
+ *           type: boolean
+ *           description: The occupation state of the parking
+ *           example: true
  *         location:
  *           type: object
  *           properties:
@@ -636,6 +640,19 @@ router
  *                 message:
  *                   type: string
  *                   example: The requested parking doesn't exist.
+ *       408:
+ *         description: Confirmation timeout expired
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: fail
+ *                 message:
+ *                   type: string
+ *                   example: Timeout waiting for button click expired.
  *       500:
  *         description: Internal Server Error
  *         content:
@@ -759,6 +776,19 @@ router
  *                 message:
  *                   type: string
  *                   example: The requested parking doesn't exist.
+ *       408:
+ *         description: Confirmation timeout expired
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: fail
+ *                 message:
+ *                   type: string
+ *                   example: Timeout waiting for button click expired.
  *       500:
  *         description: Internal Server Error
  *         content:
