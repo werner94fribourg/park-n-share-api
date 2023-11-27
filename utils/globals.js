@@ -5,6 +5,7 @@
 const PasswordValidator = require('password-validator');
 const TwilioSDK = require('twilio');
 const twilio = require('twilio');
+const Lock = require('./classes/Lock');
 
 const {
   env: { ACCOUNT_SID, TWILIO_AUTH_TOKEN },
@@ -78,7 +79,6 @@ exports.GEOAPI_REVERSE_URL = exports.GEOAPI_URL + '/reverse';
  */
 exports.PARAMETER_WHITELIST = [];
 
-
 exports.INFLUX_ORG = 'pnsOrg';
 exports.INFLUX_BUCKET = 'pnsBucket';
 
@@ -128,3 +128,6 @@ exports.CONFIRMATION_DELAY = 5 * 60 * 1000; // 5 minutes
  */
 exports.EMAIL_CONFIRMATION_DELAY = 10 * 24 * 60 * 60 * 1000; // 10 days
 
+exports.socket_lock = new Lock();
+
+exports.SOCKET_CONNECTIONS = [];

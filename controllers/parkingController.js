@@ -18,6 +18,8 @@ const {
   PARKINGS_FOLDER,
   GEOAPI_REVERSE_URL,
   GEOAPI_SEARCH_URL,
+  socket_lock,
+  SOCKET_CONNECTIONS,
 } = require('../utils/globals');
 const AppError = require('../utils/classes/AppError');
 const sharp = require('sharp');
@@ -235,7 +237,7 @@ exports.getParking = catchAsync(async (req, res, next) => {
   } = req;
   const queryObj = {};
 
-  if (!req.user && req?.user?.role !== 'admin') queryObj.isValidated = true;
+  if (!req.user || req?.user?.role !== 'admin') queryObj.isValidated = true;
 
   const selectFields = req?.user?.role === 'admin' ? '+isValidated' : '';
   const parking = await queryById(
@@ -253,6 +255,7 @@ exports.getParking = catchAsync(async (req, res, next) => {
     !parking ||
     (req.user &&
       req.user.role !== 'admin' &&
+      parking.isValidated === false &&
       parking.owner._id.valueOf() !== req.user._id.valueOf())
   ) {
     next(new AppError("The requested parking doesn't exist.", 404));
@@ -325,6 +328,15 @@ exports.startReservation = catchAsync(
       // card: { _id: idCard, cardBalance },
     } = req;
 
+    const sessionID = req?.headers?.sessionid;
+    let socket;
+    if (sessionID) {
+      const socketObj = SOCKET_CONNECTIONS.find(
+        socket => socket.id === sessionID,
+      );
+      if (socketObj) socket = socketObj?.socket;
+    }
+
     const parking = await queryById(
       Parking,
       id,
@@ -343,16 +355,19 @@ exports.startReservation = catchAsync(
 
     // Check if parking exists.
     if (!parking) {
+      if (sessionID) socket.emit('unsuccessful_reservation', {});
       return next(new AppError("The requested parking doesn't exists.", 404));
     }
 
     // Check if the connected user is the owner of the parking
     if (parking.owner._id.valueOf() === userId.valueOf()) {
+      if (sessionID) socket.emit('unsuccessful_reservation', {});
       return next(new AppError("You can't reserve your own parkings.", 400));
     }
 
     // Check if the parking is already occupied
     if (parking.isOccupied === true) {
+      if (sessionID) socket.emit('unsuccessful_reservation', {});
       next(new AppError('The requested parking is already occupied.', 400));
       return;
     }
@@ -367,12 +382,17 @@ exports.startReservation = catchAsync(
       thingy: { name: thingy },
     } = parking;
 
-    console.log(
-      `Please confirm by pressing on the button of thingy ${thingy}.`,
-    );
+    const message = `Please confirm by pressing on the button of thingy ${thingy}.`;
+    if (sessionID) {
+      socket.emit('confirmation_message', {
+        message,
+      });
+    } else console.log(message);
 
     //TODO: decomment what is in comment when we have blue-2
     const start = await waitClickButton(mqttClient, 'blue-1' /*thingy*/);
+
+    if (sessionID) socket.emit('successful_reservation', {});
 
     // Create an occupation for the parking
     // N.B. : a transaction is needed such that updating the occupation state of a parking and create a new occupation in the database will be done atomically
@@ -443,6 +463,15 @@ exports.endReservation = catchAsync(
       params: { id },
     } = req;
 
+    const sessionID = req?.headers?.sessionid;
+    let socket;
+    if (sessionID) {
+      const socketObj = SOCKET_CONNECTIONS.find(
+        socket => socket.id === sessionID,
+      );
+      if (socketObj) socket = socketObj?.socket;
+    }
+
     const [occupation, parking] = await Promise.all([
       Occupation.findOne({
         client: userId.valueOf(),
@@ -468,11 +497,13 @@ exports.endReservation = catchAsync(
 
     // Check if the parking exists
     if (!parking) {
+      if (sessionID) socket.emit('unsuccessful_end', {});
       return next(new AppError("The requested parking doesn't exists.", 404));
     }
 
     // Check if the user has reserved the parking
     if (!occupation) {
+      if (sessionID) socket.emit('unsuccessful_end', {});
       next(new AppError("You haven't reserved this parking.", 400));
       return;
     }
@@ -481,13 +512,18 @@ exports.endReservation = catchAsync(
       thingy: { name: thingy },
     } = parking;
 
-    console.log(
-      `Please confirm by pressing on the button of thingy ${thingy}.`,
-    );
+    const message = `Please confirm by pressing on the button of thingy ${thingy}.`;
+
+    if (sessionID) {
+      socket.emit('confirmation_message', {
+        message,
+      });
+    } else console.log(message);
 
     //TODO: decomment what is in comment when we have blue-2
     const end = await waitClickButton(mqttClient, 'blue-1' /*thingy*/);
 
+    if (sessionID) socket.emit('successful_end', {});
     const session = await mongoose.startSession();
     try {
       //TODO: make the payment => calculate bill by making substraction of dates and multiplication

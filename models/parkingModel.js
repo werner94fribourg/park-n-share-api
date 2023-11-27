@@ -52,7 +52,6 @@ const parkingSchema = new Schema({
   isOccupied: {
     type: Boolean,
     default: false,
-    select: false,
   },
   isPending: {
     type: Boolean,

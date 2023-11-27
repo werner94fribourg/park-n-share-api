@@ -55,6 +55,10 @@ const router = Router();
  *           type: number
  *           description: The hourly price for the parking slot rental
  *           example: 3.50
+ *         isOccupied:
+ *           type: boolean
+ *           description: The occupation state of the parking
+ *           example: true
  *         location:
  *           type: object
  *           properties:
