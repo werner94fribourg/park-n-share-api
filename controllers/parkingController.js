@@ -265,9 +265,6 @@ exports.getParking = catchAsync(async (req, res, next) => {
   parking.generateFileAbsolutePath();
   let returnedParking;
 
-  console.log(parking.thingy);
-  console.log(parking);
-
   if (parking.thingy) {
     const thingy = await Thingy.findById(parking.thingy.valueOf());
     const {

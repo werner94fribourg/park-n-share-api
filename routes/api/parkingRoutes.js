@@ -100,6 +100,54 @@ const router = Router();
 
 /**
  * @swagger
+ * components:
+ *   schemas:
+ *     Occupation:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *           description: The id of the occupation
+ *           example: 654ca08c20d9213ef42b9443
+ *         start:
+ *           type: string
+ *           description: The starting time of the occupation
+ *           example: "2023-11-22T12:23:24.012Z"
+ *         end:
+ *           type: string
+ *           description: The end time of the occupation
+ *           example: "2023-11-22T12:23:29.491Z"
+ *         bill:
+ *           type: number
+ *           description: The bill of the occupation
+ *           example: 2.55
+ *         client:
+ *           type: object
+ *           description: the client that has reserved the parking
+ *           properties:
+ *             _id:
+ *               type: string
+ *               example: 654ca08c20d9213ef42b9443
+ *             username:
+ *               type: string
+ *               example: johndoe23
+ *             email:
+ *               type: string
+ *               example: johndoe23@example.com
+ *         parking:
+ *           type: object
+ *           description: the parking that was reserved in the occupation
+ *           properties:
+ *             _id:
+ *               type: string
+ *               example: 6554db94e474b43b04d7b2d2
+ *             name:
+ *               type: string
+ *               example: Beautiful parking in fribourg
+ */
+
+/**
+ * @swagger
  * /parkings:
  *   get:
  *     tags:
@@ -694,41 +742,7 @@ router
  *                   type: object
  *                   properties:
  *                     occupation:
- *                       type: object
- *                       properties:
- *                         _id:
- *                           type: string
- *                           example: 654ca08c20d9213ef42b9443
- *                         start:
- *                           type: string
- *                           example: "2023-11-22T12:23:24.012Z"
- *                         end:
- *                           type: string
- *                           example: 2023-11-22T12:23:29.491Z
- *                         bill:
- *                           type: number
- *                           example: 2.55
- *                         client:
- *                           type: object
- *                           properties:
- *                             _id:
- *                               type: string
- *                               example: 654ca08c20d9213ef42b9443
- *                             username:
- *                               type: string
- *                               example: johndoe23
- *                             email:
- *                               type: string
- *                               example: johndoe23@example.com
- *                         parking:
- *                           type: object
- *                           properties:
- *                             _id:
- *                               type: string
- *                               example: 6554db94e474b43b04d7b2d2
- *                             name:
- *                               type: string
- *                               example: Beautiful parking in fribourg
+ *                       $ref: '#/components/schemas/Occupation'
  *       400:
  *         description: Non-reserved parking end reservation attempt
  *         content:
