@@ -24,11 +24,14 @@ class Influx {
 
   async getRetentionPolicy() {
     try {
-      const response = await axios.get('http://localhost:8086/api/v2/buckets', {
-        headers: {
-          Authorization: `Token ${process.env.INFLUX_TOKEN}`,
+      const response = await axios.get(
+        `${process.env.INFLUX_URL}/api/v2/buckets`,
+        {
+          headers: {
+            Authorization: `Token ${process.env.INFLUX_TOKEN}`,
+          },
         },
-      });
+      );
 
       const buckets = response.data.buckets;
 

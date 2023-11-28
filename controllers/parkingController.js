@@ -19,6 +19,8 @@ const {
   GEOAPI_REVERSE_URL,
   GEOAPI_SEARCH_URL,
   SOCKET_CONNECTIONS,
+  BACKEND_URL,
+  API_ROUTE,
 } = require('../utils/globals');
 const AppError = require('../utils/classes/AppError');
 const sharp = require('sharp');
@@ -236,7 +238,8 @@ exports.getParking = catchAsync(async (req, res, next) => {
 
   if (!req.user || req?.user?.role !== 'admin') queryObj.isValidated = true;
 
-  const selectFields = req?.user?.role === 'admin' ? '+isValidated' : '';
+  const selectFields =
+    req?.user?.role === 'admin' ? '+isValidated +thingy' : '+thingy';
   const parking = await queryById(
     Parking,
     id,
@@ -260,8 +263,32 @@ exports.getParking = catchAsync(async (req, res, next) => {
   }
 
   parking.generateFileAbsolutePath();
+  let returnedParking;
 
-  res.status(200).json({ status: 'success', data: { parking } });
+  console.log(parking.thingy);
+  console.log(parking);
+
+  if (parking.thingy) {
+    const thingy = await Thingy.findById(parking.thingy.valueOf());
+    const {
+      data: {
+        data: { FinalRating: rating },
+      },
+    } = await axios.get(
+      `${BACKEND_URL}${API_ROUTE}/things/${thingy.name}/rating`,
+    );
+
+    returnedParking = {
+      ...parking._doc,
+      rating,
+    };
+
+    delete returnedParking.thingy;
+  } else returnedParking = parking;
+
+  res
+    .status(200)
+    .json({ status: 'success', data: { parking: returnedParking } });
 });
 
 /**
