@@ -19,6 +19,8 @@ const {
   GEOAPI_REVERSE_URL,
   GEOAPI_SEARCH_URL,
   SOCKET_CONNECTIONS,
+  BACKEND_URL,
+  API_ROUTE,
 } = require('../utils/globals');
 const AppError = require('../utils/classes/AppError');
 const sharp = require('sharp');
@@ -228,41 +230,71 @@ exports.getAllParkings = catchAsync(
   },
 );
 
-exports.getParking = catchAsync(async (req, res, next) => {
-  const {
-    params: { id },
-  } = req;
-  const queryObj = {};
+exports.getParking = catchAsync(
+  /**
+   * Function used to get a single parking in the application.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, res, next) => {
+    const {
+      params: { id },
+    } = req;
+    const queryObj = {};
 
-  if (!req.user || req?.user?.role !== 'admin') queryObj.isValidated = true;
+    if (!req.user || req?.user?.role !== 'admin') queryObj.isValidated = true;
 
-  const selectFields = req?.user?.role === 'admin' ? '+isValidated' : '';
-  const parking = await queryById(
-    Parking,
-    id,
-    queryObj,
-    {
-      path: 'owner',
-      select: '_id username photo',
-    },
-    selectFields,
-  );
+    const selectFields =
+      req?.user?.role === 'admin' ? '+isValidated +thingy' : '+thingy';
+    const parking = await queryById(
+      Parking,
+      id,
+      queryObj,
+      {
+        path: 'owner',
+        select: '_id username photo',
+      },
+      selectFields,
+    );
 
-  if (
-    !parking ||
-    (req.user &&
-      req.user.role !== 'admin' &&
-      parking.isValidated === false &&
-      parking.owner._id.valueOf() !== req.user._id.valueOf())
-  ) {
-    next(new AppError("The requested parking doesn't exist.", 404));
-    return;
-  }
+    if (
+      !parking ||
+      (req.user &&
+        req.user.role !== 'admin' &&
+        parking.isValidated === false &&
+        parking.owner._id.valueOf() !== req.user._id.valueOf())
+    ) {
+      next(new AppError("The requested parking doesn't exist.", 404));
+      return;
+    }
 
-  parking.generateFileAbsolutePath();
+    parking.generateFileAbsolutePath();
+    let returnedParking;
 
-  res.status(200).json({ status: 'success', data: { parking } });
-});
+    if (parking.thingy) {
+      const thingy = await Thingy.findById(parking.thingy.valueOf());
+      const {
+        data: {
+          data: { FinalRating: rating },
+        },
+      } = await axios.get(
+        `${BACKEND_URL}${API_ROUTE}/things/${thingy.name}/rating`,
+      );
+
+      returnedParking = {
+        ...parking._doc,
+        rating,
+      };
+
+      delete returnedParking.thingy;
+    } else returnedParking = parking;
+
+    res
+      .status(200)
+      .json({ status: 'success', data: { parking: returnedParking } });
+  },
+);
 
 /**
  * Multer middle function that takes care of processing the photos field images associated with the form sent to the server (max 10 pictures).
