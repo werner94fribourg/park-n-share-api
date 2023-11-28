@@ -4,7 +4,7 @@
  */
 const AppError = require('../utils/classes/AppError');
 const {
-  handleCastErrorDB,
+  queryByIdDB,
   handleDuplicateFieldsDB,
   handleValidationErrorDB,
   handleJWTError,
@@ -26,7 +26,7 @@ module.exports = (err, _, res, next) => {
   // eslint-disable-next-line prettier/prettier, node/no-unsupported-features/es-syntax
   let error = err;
 
-  if (err.name === 'CastError') error = handleCastErrorDB(err);
+  if (err.name === 'CastError') error = queryByIdDB(err);
 
   if (err.code === 11000) error = handleDuplicateFieldsDB(err);
 

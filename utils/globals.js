@@ -5,10 +5,13 @@
 const PasswordValidator = require('password-validator');
 const TwilioSDK = require('twilio');
 const twilio = require('twilio');
+const Lock = require('./classes/Lock');
 
 const {
   env: { ACCOUNT_SID, TWILIO_AUTH_TOKEN },
 } = process;
+
+const Influx = require('../utils/classes/Influx');
 
 /**
  * Base URL of the API.
@@ -24,13 +27,21 @@ exports.PUBLIC_FOLDER = 'public';
 
 /**
  * Filepath of the img static directory.
+ * @type {string}
  */
 exports.IMG_FOLDER = exports.PUBLIC_FOLDER + '/img';
 
 /**
  * File path of the users (i.e. user profile images) static directory.
+ * @type {string}
  */
 exports.USERS_FOLDER = exports.IMG_FOLDER + '/users';
+
+/**
+ * File path of the parking slots (i.e. parking slot images) static directory.
+ * @type {string}
+ */
+exports.PARKINGS_FOLDER = exports.IMG_FOLDER + '/parkings';
 
 /**
  * Base URL of the frontend application.
@@ -40,14 +51,51 @@ exports.FRONTEND_URL = 'http://localhost:3000';
 
 /**
  * Base URL of the backend application.
+ * @type {string}
  */
 exports.BACKEND_URL = 'http://localhost:3001';
+
+/**
+ * Base URL of the GEOAPI
+ * @type {string}
+ */
+exports.GEOAPI_URL = 'https://api.geoapify.com/v1/geocode';
+
+/**
+ * Search URL of GEOAPI, used to find the coordinates for a specific address
+ * @type {string}
+ */
+exports.GEOAPI_SEARCH_URL = exports.GEOAPI_URL + '/search';
+
+/**
+ * Reverse URL of GEOAPI, used to find an address for given coordinates
+ * @type {string}
+ */
+exports.GEOAPI_REVERSE_URL = exports.GEOAPI_URL + '/reverse';
 
 /**
  * List of url parameters that can happen multiple times.
  * @type {string[]}
  */
 exports.PARAMETER_WHITELIST = [];
+
+/**
+ * Name of the organisation for the InfluxDB database
+ * @type {string}
+ */
+exports.INFLUX_ORG = 'pnsOrg';
+
+/**
+ * InfluxDB bucket name
+ * @type {string}
+ */
+exports.INFLUX_BUCKET = 'pnsBucket';
+
+/**
+ * Influx DB object, used to handle all influxDB operations
+ * @type {Influx}
+ */
+exports.INFLUX = new Influx(this.INFLUX_ORG, this.INFLUX_BUCKET);
 
 const PASSWORD_VALIDATOR = new PasswordValidator();
 
@@ -92,3 +140,15 @@ exports.CONFIRMATION_DELAY = 5 * 60 * 1000; // 5 minutes
  * @type {number}
  */
 exports.EMAIL_CONFIRMATION_DELAY = 10 * 24 * 60 * 60 * 1000; // 10 days
+
+/**
+ * Socket lock object used to restrict simultanous access on the socket connection array when trying to modifying it.
+ * @type {Lock}
+ */
+exports.socket_lock = new Lock();
+
+/**
+ * Socket connection array, containing all the existing socket connections etablished between the backend and client applications.
+ * @type {Array}
+ */
+exports.SOCKET_CONNECTIONS = [];

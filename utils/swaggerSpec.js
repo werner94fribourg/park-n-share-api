@@ -37,6 +37,18 @@ const options = {
         name: 'User',
         description: 'All operations related to user management',
       },
+      {
+        name: 'Parking',
+        description: 'All operations related to parking management',
+      },
+      {
+        name: 'Thingy',
+        description: 'All operations related to thingy management',
+      },
+      {
+        name: 'Occupation',
+        description: 'All operations related to occupation management',
+      },
     ],
     components: {
       securitySchemes: {

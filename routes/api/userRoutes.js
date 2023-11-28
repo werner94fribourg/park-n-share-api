@@ -15,6 +15,11 @@ const {
   isResetLinkValid,
   resetPassword,
   getPinExpiration,
+  getGoogleSignin,
+  googleSignin,
+  googleSignup,
+  getGoogleSignup,
+  getGoogleClient,
 } = require('../../controllers/authController');
 const { Router } = require('express');
 const {
@@ -194,6 +199,39 @@ router.route('/').get(getAllUsers);
  *     tags:
  *       - Authentication
  *     summary: Route used to signup an user
+ *     requestBody:
+ *       description: The datas of the user that wants to register
+ *       content:
+ *         application/json:
+ *           schema:
+ *            type: object
+ *            required:
+ *              - username
+ *              - email
+ *              - phone
+ *              - password
+ *              - passwordConfirm
+ *            properties:
+ *              username:
+ *                type: string
+ *                description: The username of the user
+ *                example: johndoe25
+ *              email:
+ *                type: string
+ *                description: The email of the user
+ *                example: johndoe@example.com
+ *              phone:
+ *                type: string
+ *                description: The phone number of the user
+ *                example: +41735671389
+ *              password:
+ *                type: string
+ *                description: The password of the user
+ *                example: Test@1234
+ *              passwordConfirm:
+ *                type: string
+ *                description: The password confimation
+ *                example: Test@1234
  *     responses:
  *       201:
  *         description: The successful registration status
@@ -232,6 +270,14 @@ router.route('/').get(getAllUsers);
  */
 router.route('/signup').post(signup);
 
+router
+  .route('/google/signup/link')
+  .get(getGoogleClient('signup', true), getGoogleSignup);
+
+router
+  .route('/google/signup')
+  .get(getGoogleClient('signup', false), googleSignup);
+
 /**
  * @swagger
  * /users/signin:
@@ -239,6 +285,24 @@ router.route('/signup').post(signup);
  *     tags:
  *       - Authentication
  *     summary: Route used to signin an user
+ *     requestBody:
+ *       description: The credentials of the user that wants to connect
+ *       content:
+ *         application/json:
+ *           schema:
+ *            type: object
+ *            required:
+ *              - email
+ *              - password
+ *            properties:
+ *              email:
+ *                type: string
+ *                description: The email of the user
+ *                example: johndoe@example.com
+ *              password:
+ *                type: string
+ *                description: The password of the user
+ *                example: Test@1234
  *     responses:
  *       200:
  *         description: The successful login status
@@ -287,6 +351,14 @@ router.route('/signup').post(signup);
  */
 router.route('/signin').post(signin);
 
+router
+  .route('/google/signin/link')
+  .get(getGoogleClient('signin', true), getGoogleSignin);
+
+router
+  .route('/google/signin')
+  .get(getGoogleClient('signin', false), googleSignin);
+
 /**
  * @swagger
  * /users/confirm-pin:
@@ -294,6 +366,24 @@ router.route('/signin').post(signin);
  *     tags:
  *       - Authentication
  *     summary: Route used to confirm the pin code sent to the user in the signin or signup process
+ *     requestBody:
+ *       description: The email and the pin code received of the user
+ *       content:
+ *         application/json:
+ *           schema:
+ *            type: object
+ *            required:
+ *              - email
+ *              - pinCode
+ *            properties:
+ *              email:
+ *                type: string
+ *                description: The email of the user
+ *                example: johndoe@example.com
+ *              pinCode:
+ *                type: number
+ *                description: The pin code received by the user
+ *                example: 146797
  *     responses:
  *       200:
  *         description: The successful pin confirmation status
@@ -521,12 +611,16 @@ router.route('/confirm-email/:confToken').patch(confirmEmail);
  *         application/json:
  *           schema:
  *            type: object
+ *            required:
+ *              - passwordCurrent
+ *              - password
+ *              - passwordConfirm
  *            properties:
  *              passwordCurrent:
  *                type: string
  *                description: The actual password of the user
  *                example: Test@1234
- *              description:
+ *              password:
  *                type: string
  *                description: The new password of the user
  *                example: Test@12345
@@ -672,6 +766,24 @@ router.route('/forgot-password').post(forgotPassword);
  *         required: true
  *         schema:
  *           type: string
+ *     requestBody:
+ *       description: The new password to store.
+ *       content:
+ *         application/json:
+ *           schema:
+ *            type: object
+ *            required:
+ *              - password
+ *              - passwordConfirm
+ *            properties:
+ *              password:
+ *                type: string
+ *                description: The new password of the user
+ *                example: Test@12345
+ *              passwordConfirm:
+ *                type: string
+ *                description: The confirmation of the new password
+ *                example: Test@12345
  *     responses:
  *       200:
  *         description: The validity of the reset link
@@ -963,7 +1075,20 @@ router
  *   patch:
  *     tags:
  *       - User
- *     summary: Route used to change the role of an existing user (accessible to admin only)
+ *     summary: Route used to change the role of an existing user (accessible to admins only)
+ *     requestBody:
+ *       description: The new role of the user.
+ *       content:
+ *         application/json:
+ *           schema:
+ *            type: object
+ *            required:
+ *              - role
+ *            properties:
+ *              role:
+ *                type: string
+ *                description: The new role of the user
+ *                example: provider
  *     responses:
  *       200:
  *         description: Successful user role change
@@ -980,6 +1105,21 @@ router
  *                   properties:
  *                     user:
  *                       $ref: '#/components/schemas/User'
+ *       401:
+ *         description: User login problems
+ *         content:
+ *           application/json:
+ *             examples:
+ *               notLoggedInExample:
+ *                 $ref: '#/components/examples/notLoggedInExample'
+ *               accountNotFoundExample:
+ *                 $ref: '#/components/examples/accountNotFoundExample'
+ *               passwordChangedExample:
+ *                 $ref: '#/components/examples/passwordChangedExample'
+ *               InvalidTokenExample:
+ *                 $ref: '#/components/examples/InvalidTokenExample'
+ *               tokenExpiredExample:
+ *                 $ref: '#/components/examples/tokenExpiredExample'
  *       403:
  *         description: Role related errors
  *         content:

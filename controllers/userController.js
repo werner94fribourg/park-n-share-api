@@ -5,7 +5,7 @@
 const User = require('../models/userModel');
 const AppError = require('../utils/classes/AppError');
 const { USERS_FOLDER } = require('../utils/globals');
-const { catchAsync, uploadImage } = require('../utils/utils');
+const { catchAsync, uploadImage, queryById } = require('../utils/utils');
 const sharp = require('sharp');
 
 exports.getAllUsers = catchAsync(
@@ -55,7 +55,7 @@ exports.getUser = catchAsync(
 
     const selectFields = self ? '+role +isEmailConfirmed' : '';
 
-    const user = await User.findById(id).select(selectFields);
+    const user = await queryById(User, id, {}, null, selectFields);
 
     if (!user) {
       next(
@@ -86,7 +86,7 @@ exports.updateUser = catchAsync(
       body: { photo },
     } = req;
 
-    const user = await User.findById(id);
+    const user = await queryById(User, id);
 
     if (!user) {
       next(
@@ -115,13 +115,13 @@ exports.deleteUser = catchAsync(
    * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
    */
   async (req, res, next) => {
-    //1) Get the id of the user we want to delete
+    //1) get the id of the user we want to delete
     const {
       params: { id },
     } = req;
 
-    //2) Retrieve him from the database
-    const user = await User.findById(id);
+    //2) retrieve him from the database
+    const user = await queryById(User, id);
 
     //3) check if the user wasn't found
     if (!user) {
@@ -131,17 +131,15 @@ exports.deleteUser = catchAsync(
       return;
     }
 
-    // 4) check if the user is an admin
+    //4) check if the user is an admin
     if (user.role === 'admin') {
       next(new AppError("You can't delete an admin user.", 403));
       return;
     }
 
-    // delete the user
+    //5) delete the user
     await User.findByIdAndDelete(id);
 
-    // If the user was successfully deleted, you can send a success response
-    // N.B. : it is a practice to not send any content back
     res.status(204).json({
       status: 'success',
     });
@@ -160,7 +158,7 @@ exports.setRole = catchAsync(
       params: { id },
       body: { role },
     } = req;
-    const user = await User.findById(id);
+    const user = await queryById(User, id);
 
     // 1) check if the user wasn't found
     if (!user) {
@@ -208,7 +206,7 @@ exports.resizeUserPhoto = catchAsync(
   async (req, _, next) => {
     const {
       file,
-      user: { id },
+      user: { _id: id },
     } = req;
 
     if (!file) {
