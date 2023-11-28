@@ -16,6 +16,8 @@ const { Server } = require('http');
 const multer = require('multer');
 const { promisify } = require('util');
 const mqttClient = require('../mqtt/mqttHandler');
+const axios = require('axios');
+const { OAuth2Client } = require('google-auth-library');
 
 const {
   env: { TWILIO_PHONE_NUMBER, JWT_SECRET },
@@ -641,4 +643,26 @@ exports.getLinearRating = (value, config) => {
     // Ensure the rating is not below 0
     return Math.max(0, rating);
   }
+};
+
+/**
+ * Function used to connect an user and get his google credentials if he successfully previously connected using google.
+ * @param {OAuth2Client} oAuth2Client the google oauth2 client
+ * @param {string} code the generated code when the user successfully authenticates in the application
+ * @returns {Object} the data of the connected user
+ */
+exports.connectUser = async (oAuth2Client, code) => {
+  const resp = await oAuth2Client.getToken(code);
+
+  await oAuth2Client.setCredentials(resp.tokens);
+
+  const user = oAuth2Client.credentials;
+
+  const response = await axios.get(
+    `https://www.googleapis.com/oauth2/v1/userinfo?alt=json&access_token=${user.access_token}`,
+  );
+
+  const { data } = await response;
+
+  return data;
 };

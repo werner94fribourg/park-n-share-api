@@ -15,6 +15,11 @@ const {
   isResetLinkValid,
   resetPassword,
   getPinExpiration,
+  getGoogleSignin,
+  googleSignin,
+  googleSignup,
+  getGoogleSignup,
+  getGoogleClient,
 } = require('../../controllers/authController');
 const { Router } = require('express');
 const {
@@ -265,6 +270,14 @@ router.route('/').get(getAllUsers);
  */
 router.route('/signup').post(signup);
 
+router
+  .route('/google/signup/link')
+  .get(getGoogleClient('signup', true), getGoogleSignup);
+
+router
+  .route('/google/signup')
+  .get(getGoogleClient('signup', false), googleSignup);
+
 /**
  * @swagger
  * /users/signin:
@@ -337,6 +350,14 @@ router.route('/signup').post(signup);
  *                   message: There was an error sending the pin code. Please retry or contact us at admin@parknshare.com.
  */
 router.route('/signin').post(signin);
+
+router
+  .route('/google/signin/link')
+  .get(getGoogleClient('signin', true), getGoogleSignin);
+
+router
+  .route('/google/signin')
+  .get(getGoogleClient('signin', false), googleSignin);
 
 /**
  * @swagger

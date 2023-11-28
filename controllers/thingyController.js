@@ -263,93 +263,95 @@ exports.setLEDColor = catchAsync(
   },
 );
 
-/**
- * Handles GET requests to fetch for property ratings, and returns a final rating.
- * @param {object} req - Express request object.
- * @param {object} res - Express response object.
- * @param {function} next - Express next middleware function.
- */
-exports.getRating = catchAsync(async (req, res, next) => {
-  const deviceId = req.params.thingyId;
-  const properties = ['TEMP', 'HUMID', 'CO2_EQUIV', 'AIR_QUAL', 'AIR_PRESS'];
-  const means = {};
+exports.getRating = catchAsync(
+  /**
+   * Handles GET requests to fetch for property ratings, and returns a final rating.
+   * @param {object} req - Express request object.
+   * @param {object} res - Express response object.
+   * @param {function} next - Express next middleware function.
+   */
+  async (req, res, next) => {
+    const deviceId = req.params.thingyId;
+    const properties = ['TEMP', 'HUMID', 'CO2_EQUIV', 'AIR_QUAL', 'AIR_PRESS'];
+    const means = {};
 
-  try {
-    for (const property of properties) {
-      const getMeanQuery = constructStatisticalQueryOnProperty(
-        'pnsBucket',
-        '1y',
-        'thingy91',
-        deviceId,
-        property,
-        'mean',
+    try {
+      for (const property of properties) {
+        const getMeanQuery = constructStatisticalQueryOnProperty(
+          'pnsBucket',
+          '1y',
+          'thingy91',
+          deviceId,
+          property,
+          'mean',
+        );
+        const result = await getQueryRows(getMeanQuery);
+        means[property] = result[0]._value;
+      }
+    } catch (error) {
+      next(
+        new AppError(
+          `Oops, something went wrong while fetching means of properties. Error: ${error}`,
+          500,
+        ),
       );
-      const result = await getQueryRows(getMeanQuery);
-      means[property] = result[0]._value;
+      return null;
     }
-  } catch (error) {
-    next(
-      new AppError(
-        `Oops, something went wrong while fetching means of properties. Error: ${error}`,
-        500,
-      ),
-    );
-    return null;
-  }
 
-  // Configurations for S-Curved Ratings
-  const tempConfig = {
-    optimalRange: [20, 25],
-    slopeAboveOptimal: 0.15,
-    slopeBelowOptimal: 0.025,
-  };
+    // Configurations for S-Curved Ratings
+    const tempConfig = {
+      optimalRange: [20, 25],
+      slopeAboveOptimal: 0.15,
+      slopeBelowOptimal: 0.025,
+    };
 
-  // Configuration for Linear Ratings
-  const humidConfig = {
-    optimalRange: [40, 60],
-    fullRange: [0, 100],
-  };
+    // Configuration for Linear Ratings
+    const humidConfig = {
+      optimalRange: [40, 60],
+      fullRange: [0, 100],
+    };
 
-  const airQualConfig = {
-    optimalRange: [0, 50],
-    fullRange: [0, 500],
-  };
+    const airQualConfig = {
+      optimalRange: [0, 50],
+      fullRange: [0, 500],
+    };
 
-  const co2Config = {
-    optimalRange: [0, 1000],
-    fullRange: [0, 5000],
-  };
+    const co2Config = {
+      optimalRange: [0, 1000],
+      fullRange: [0, 5000],
+    };
 
-  const airPressConfig = {
-    optimalRange: [97, 103],
-    fullRange: [87, 103],
-  };
+    const airPressConfig = {
+      optimalRange: [97, 103],
+      fullRange: [87, 103],
+    };
 
-  const ratings = {
-    TEMP: getSCurveRating(means['TEMP'], tempConfig),
-    HUMID: getLinearRating(means['HUMID'], humidConfig),
-    AIR_QUAL: getLinearRating(means['AIR_QUAL'], airQualConfig),
-    CO2_EQUIV: getLinearRating(means['CO2_EQUIV'], co2Config),
-    AIR_PRESS: getLinearRating(means['AIR_PRESS'], airPressConfig),
-  };
+    const ratings = {
+      TEMP: getSCurveRating(means['TEMP'], tempConfig),
+      HUMID: getLinearRating(means['HUMID'], humidConfig),
+      AIR_QUAL: getLinearRating(means['AIR_QUAL'], airQualConfig),
+      CO2_EQUIV: getLinearRating(means['CO2_EQUIV'], co2Config),
+      AIR_PRESS: getLinearRating(means['AIR_PRESS'], airPressConfig),
+    };
 
-  const finalRating =
-    (ratings['TEMP'] +
-      ratings['HUMID'] +
-      ratings['AIR_QUAL'] +
-      ratings['CO2_EQUIV'] +
-      ratings['AIR_PRESS']) /
-    5;
+    const finalRating =
+      (ratings['TEMP'] +
+        ratings['HUMID'] +
+        ratings['AIR_QUAL'] +
+        ratings['CO2_EQUIV'] +
+        ratings['AIR_PRESS']) /
+      5;
 
-  res.status(200).json({
-    status: 'success',
-    data: {
-      TEMP: ratings['TEMP'].toFixed(2),
-      HUMID: ratings['HUMID'].toFixed(2),
-      AIR_QUAL: ratings['AIR_QUAL'].toFixed(2),
-      CO2_EQUIV: ratings['CO2_EQUIV'].toFixed(2),
-      AIR_PRESS: ratings['AIR_PRESS'].toFixed(2),
-      FinalRating: Math.round(finalRating * 2) / 2,
-    },
-  });
-});
+    res.status(200).json({
+      status: 'success',
+      data: {
+        TEMP: ratings['TEMP'].toFixed(2),
+        HUMID: ratings['HUMID'].toFixed(2),
+        AIR_QUAL: ratings['AIR_QUAL'].toFixed(2),
+        CO2_EQUIV: ratings['CO2_EQUIV'].toFixed(2),
+        AIR_PRESS: ratings['AIR_PRESS'].toFixed(2),
+        FinalRating: Math.round(finalRating * 2) / 2,
+      },
+    });
+  },
+);

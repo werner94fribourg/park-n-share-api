@@ -11,9 +11,16 @@ const {
 } = require('../utils/utils');
 const AppError = require('../utils/classes/AppError');
 const User = require('../models/userModel');
-const { FRONTEND_URL } = require('../utils/globals');
+const {
+  FRONTEND_URL,
+  BACKEND_URL,
+  API_ROUTE,
+  socket_lock,
+  SOCKET_CONNECTIONS,
+} = require('../utils/globals');
 const crypto = require('crypto');
 const Email = require('../utils/classes/Email');
+const { OAuth2Client } = require('google-auth-library');
 
 exports.signup = catchAsync(
   /**
@@ -55,6 +62,130 @@ exports.signup = catchAsync(
       message: 'Please confirm with the PIN code sent to your phone number.',
       pinCodeExpires,
     });
+  },
+);
+
+exports.getGoogleClient =
+  /**
+   * Function used to get a specific google client in the signin/signup process.
+   * @param {string} type the type of route the client wants to access
+   * @param {boolean} getLink true if the client wants to get back the google url, false if he wants to authenticate
+   * @returns {import('express').RequestHandler} A request handler function that will check that the user has one of the role specified in the list.
+   */
+  (type, getLink) =>
+    catchAsync(
+      /**
+       * Function used to create a google authentication client and store in the request object
+       * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+       * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+       * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+       */
+      async (req, res, next) => {
+        const redirectUrl = `${BACKEND_URL}${API_ROUTE}/users/google/${type}`;
+
+        const sessionID = getLink
+          ? req?.headers?.sessionid
+          : JSON.parse(Buffer.from(req.query.state, 'base64').toString('utf-8'))
+              .sessionID;
+
+        const oAuth2Client = new OAuth2Client(
+          process.env.GOOGLE_CLIENT_ID,
+          process.env.GOOGLE_CLIENT_SECRET,
+          redirectUrl,
+        );
+
+        req.googleClient = oAuth2Client;
+        req.sessionID = sessionID;
+
+        next();
+      },
+    );
+
+exports.getGoogleSignup = catchAsync(
+  /**
+   * Function used to get a google signup link and send it back to the client that requested it.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, res, next) => {
+    try {
+      const { sessionID } = req;
+      const { googleClient } = req;
+      res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+      res.header('Referrer-Policy', 'no-referrer-when-downgrade');
+
+      const state = Buffer.from(JSON.stringify({ sessionID })).toString(
+        'base64',
+      );
+
+      const scopes = [
+        'https://www.googleapis.com/auth/user.phonenumbers.read',
+        'https://www.googleapis.com/auth/user.emails.read',
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/userinfo.profile',
+      ];
+
+      const authorizeUrl = googleClient.generateAuthUrl({
+        scope: 'https://www.googleapis.com/auth/userinfo.profile openid',
+        prompt: 'consent',
+        access_type: 'offline',
+        state: 'connection',
+        state,
+        scopes: scopes.join(' '),
+      });
+
+      res.json({ status: 'success', url: authorizeUrl });
+    } catch (err) {
+      console.log(err);
+
+      next(new AppError('Error while trying to signin with google', 500));
+    }
+  },
+);
+
+exports.googleSignup = catchAsync(
+  /**
+   * Function used to login the user using his google account when he requests the signup route.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, res, next) => {
+    const { sessionID } = req;
+    let socket;
+    if (sessionID) {
+      const socketObj = SOCKET_CONNECTIONS.find(
+        socket => socket.id === sessionID,
+      );
+      if (socketObj) socket = socketObj?.socket;
+    }
+
+    try {
+      const code = req?.query?.code;
+      const { googleClient } = req;
+
+      if (code) {
+        const user = await connectUser(googleClient, code, res);
+        if (sessionID) socket.emit('signed_up', user);
+        res.status(200).json({ status: 'success', data: { user } });
+        return;
+      }
+
+      if (sessionID)
+        socket.emit('signup_error', {
+          message: 'Error while trying to signin with google',
+        });
+      next(new AppError('Error while trying to signin with google', 500));
+    } catch (err) {
+      console.log(err);
+
+      if (sessionID)
+        socket.emit('signup_error', {
+          message: 'Error while trying to signin with google',
+        });
+      next(new AppError('Error while trying to signin with google', 500));
+    }
   },
 );
 
@@ -195,6 +326,30 @@ exports.signin = catchAsync(
       message: 'Please confirm with the PIN code sent to your phone number.',
       pinCodeExpires,
     });
+  },
+);
+
+exports.getGoogleSignin = catchAsync(
+  /**
+   * Function used to get a google signin link and send it back to the client that requested it.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, res, next) => {
+    res.status(200).json({ message: 'to implement' });
+  },
+);
+
+exports.googleSignin = catchAsync(
+  /**
+   * Function used to login the user using his google account when he requests the signin route.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').Response} res The response object of the Express framework, used to handle the response we will give back to the end user.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, res, next) => {
+    res.status(200).json({ message: 'to implement' });
   },
 );
 
