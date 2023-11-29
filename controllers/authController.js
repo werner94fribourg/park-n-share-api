@@ -8,6 +8,7 @@ const {
   sendPinCode,
   getToken,
   connectUser,
+  connectGoogleUser,
 } = require('../utils/utils');
 const AppError = require('../utils/classes/AppError');
 const User = require('../models/userModel');
@@ -166,7 +167,7 @@ exports.googleSignup = catchAsync(
       const { googleClient } = req;
 
       if (code) {
-        const user = await connectUser(googleClient, code, res);
+        const user = await connectGoogleUser(googleClient, code, res);
         if (sessionID) socket.emit('signed_up', user);
         res.status(200).json({ status: 'success', data: { user } });
         return;

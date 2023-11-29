@@ -651,7 +651,7 @@ exports.getLinearRating = (value, config) => {
  * @param {string} code the generated code when the user successfully authenticates in the application
  * @returns {Object} the data of the connected user
  */
-exports.connectUser = async (oAuth2Client, code) => {
+exports.connectGoogleUser = async (oAuth2Client, code) => {
   const resp = await oAuth2Client.getToken(code);
 
   await oAuth2Client.setCredentials(resp.tokens);
