@@ -578,6 +578,7 @@ exports.forgotPassword = catchAsync(
         message: 'Reset password link sent to your email!',
       });
     } catch (err) {
+      console.log(err);
       user.passwordResetToken = undefined;
       user.passwordResetExpires = undefined;
       await user.save({ validateBeforeSave: false });
