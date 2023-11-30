@@ -185,6 +185,10 @@ exports.validateParking = catchAsync(
     try {
       await new Email(owner).sendValidatedParking();
     } catch (err) {
+      console.error(
+        'Error while trying to send the parking validation to the owner.',
+      );
+      console.error(err);
       next(
         new AppError(
           'There was an error sending the confirmation email. Please contact us at admin@parknshare.com!',
@@ -192,7 +196,6 @@ exports.validateParking = catchAsync(
         ),
       );
 
-      console.error(err);
       return;
     }
     parking.generateFileAbsolutePath();
@@ -465,7 +468,10 @@ exports.startReservation = catchAsync(
       try {
         await new Email(parking.owner).sendParkingReserved(username);
       } catch (err) {
-        console.log(err);
+        console.error(
+          'Error while trying to send the parking reservation start to the owner.',
+        );
+        console.error(err);
       }
 
       res.status(200).json({
@@ -598,7 +604,10 @@ exports.endReservation = catchAsync(
       try {
         await new Email(parking.owner).sendParkingEndReservation(username);
       } catch (err) {
-        console.log(err);
+        console.error(
+          'Error while trying to send the parking reservation end to the owner.',
+        );
+        console.error(err);
       }
 
       res.status(200).json({

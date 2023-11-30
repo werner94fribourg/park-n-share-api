@@ -450,6 +450,11 @@ exports.sendConfirmationEmail = catchAsync(
       user.confirmEmailToken = undefined;
       user.confirmEmailExpires = undefined;
       await user.save({ validateBeforeSave: false });
+
+      console.error(
+        'Error while trying to send the email confirmation link to email.',
+      );
+      console.error(err);
       next(
         new AppError(
           'There was an error sending the confirmation email. Please contact us at admin@parknshare.com!',
@@ -578,10 +583,14 @@ exports.forgotPassword = catchAsync(
         message: 'Reset password link sent to your email!',
       });
     } catch (err) {
-      console.log(err);
       user.passwordResetToken = undefined;
       user.passwordResetExpires = undefined;
       await user.save({ validateBeforeSave: false });
+
+      console.error(
+        'Error while trying to send the forgot password link to email.',
+      );
+      console.error(err);
       next(
         new AppError('There was an error sending the email. Try Again!', 500),
       );
