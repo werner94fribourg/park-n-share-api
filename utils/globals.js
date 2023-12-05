@@ -53,7 +53,7 @@ exports.FRONTEND_URL = 'http://localhost:3000';
  * Base URL of the backend application.
  * @type {string}
  */
-exports.BACKEND_URL = 'http://localhost:3001';
+exports.BACKEND_URL = process.env.API_URL;
 
 /**
  * Base URL of the GEOAPI
