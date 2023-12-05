@@ -47,7 +47,7 @@ exports.PARKINGS_FOLDER = exports.IMG_FOLDER + '/parkings';
  * Base URL of the frontend application.
  * @type {string}
  */
-exports.FRONTEND_URL = 'http://localhost:3000';
+exports.FRONTEND_URL = process.env.FRONTEND_URL;
 
 /**
  * Base URL of the backend application.
