@@ -7,7 +7,7 @@ The web application Park'N'Share is divided into two main repositories, thingy-a
 
 ## How To Run the Project
 
-It is straightforward to run the application, you can follow the instructions given below to run the application on your local host at `http://localhost:3001/` or you can also directly access our webpage from the browser at the link `https://656f802f25a57c30c1e0bc2e--fascinating-froyo-772267.netlify.app/` because we deployed the application on Azure cloud provider since we dockerized it.
+It is straightforward to run the application, you can follow the instructions given below to run the application on your local host at `http://localhost:3001/` or you can also directly access our webpage from the browser at the link `^https://park-n-share.vercel.app` because we deployed the application on Azure cloud provider since we dockerized it.
 
 ### Install the dependencies
 
