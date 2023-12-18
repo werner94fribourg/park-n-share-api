@@ -409,9 +409,11 @@ exports.startReservation = catchAsync(
       password: process.env.MQTT_PWD,
     });*/
 
-    const {
+    let {
       thingy: { name: thingy },
     } = parking;
+
+    thingy = thingy === 'blue-1' ? 'blue-3' : thingy;
 
     const message = `Please confirm by pressing on the button of thingy ${thingy}.`;
     if (sessionID) {
@@ -548,9 +550,11 @@ exports.endReservation = catchAsync(
       return;
     }
 
-    const {
+    let {
       thingy: { name: thingy },
     } = parking;
+
+    thingy = thingy === 'blue-1' ? 'blue-3' : thingy;
 
     const message = `Please confirm by pressing on the button of thingy ${thingy}.`;
 
