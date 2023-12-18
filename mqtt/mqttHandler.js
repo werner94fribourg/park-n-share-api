@@ -25,6 +25,7 @@ mqttClient.on('connect', () => {
   console.log('Connected to MQTT server.');
   mqttClient.subscribe('things/blue-1/shadow/update');
   mqttClient.subscribe('things/blue-2/shadow/update');
+  mqttClient.subscribe('things/blue-3/shadow/update');
 });
 
 /**
