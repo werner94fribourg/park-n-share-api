@@ -1,0 +1,5 @@
+- Feature Parking validation => check front end + connection comme admin
+- Payment system => integrate stripe
+- Authentication => Google Authentication w/ decoupled frontend and backend => transmit through websocket
+
+- Explore Amazon Lex + Comprehend + Personalize => see Stephane Maarek course

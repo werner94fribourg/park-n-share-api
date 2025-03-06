@@ -18,9 +18,6 @@ const {
   PARKINGS_FOLDER,
   GEOAPI_REVERSE_URL,
   GEOAPI_SEARCH_URL,
-  SOCKET_CONNECTIONS,
-  BACKEND_URL,
-  API_ROUTE,
 } = require('../utils/globals');
 const AppError = require('../utils/classes/AppError');
 const sharp = require('sharp');
@@ -33,8 +30,6 @@ const User = require('../models/userModel');
 const Email = require('../utils/classes/Email');
 const mongoose = require('mongoose');
 const moment = require('moment-timezone');
-const Thingy = require('../models/thingyModel');
-const mqttClient = require('../mqtt/mqttHandler');
 
 exports.handleParkingQuery = catchAsync(
   /**
@@ -156,10 +151,7 @@ exports.validateParking = catchAsync(
       params: { id },
     } = req;
 
-    const [parking, [thingy]] = await Promise.all([
-      queryById(Parking, id),
-      Thingy.aggregate([{ $sample: { size: 1 } }]),
-    ]);
+    const parking = await queryById(Parking, id);
 
     // Check if parking exists.
     if (!parking) {
@@ -171,7 +163,6 @@ exports.validateParking = catchAsync(
       id,
       {
         isValidated: true,
-        thingy: thingy._id,
       },
       { new: true },
     ).select('+isValidated');
@@ -183,7 +174,7 @@ exports.validateParking = catchAsync(
 
     // Send email to owner for validation
     try {
-      await new Email(owner).sendValidatedParking();
+      await new Email(owner).sendValidatedParking(updatedParking.name);
     } catch (err) {
       console.error(
         'Error while trying to send the parking validation to the owner.',
@@ -248,8 +239,7 @@ exports.getParking = catchAsync(
 
     if (!req.user || req?.user?.role !== 'admin') queryObj.isValidated = true;
 
-    const selectFields =
-      req?.user?.role === 'admin' ? '+isValidated +thingy' : '+thingy';
+    const selectFields = req?.user?.role === 'admin' ? '+isValidated' : '';
     const parking = await queryById(
       Parking,
       id,
@@ -273,29 +263,8 @@ exports.getParking = catchAsync(
     }
 
     parking.generateFileAbsolutePath();
-    let returnedParking;
 
-    if (parking.thingy) {
-      const thingy = await Thingy.findById(parking.thingy.valueOf());
-      const {
-        data: {
-          data: { FinalRating: rating },
-        },
-      } = await axios.get(
-        `${BACKEND_URL}${API_ROUTE}/things/${thingy.name}/rating`,
-      );
-
-      returnedParking = {
-        ...parking._doc,
-        rating,
-      };
-
-      delete returnedParking.thingy;
-    } else returnedParking = parking;
-
-    res
-      .status(200)
-      .json({ status: 'success', data: { parking: returnedParking } });
+    res.status(200).json({ status: 'success', data: { parking } });
   },
 );
 
@@ -359,15 +328,6 @@ exports.startReservation = catchAsync(
       // card: { _id: idCard, cardBalance },
     } = req;
 
-    const sessionID = req?.headers?.sessionid;
-    let socket;
-    if (sessionID) {
-      const socketObj = SOCKET_CONNECTIONS.find(
-        socket => socket.id === sessionID,
-      );
-      if (socketObj) socket = socketObj?.socket;
-    }
-
     const parking = await queryById(
       Parking,
       id,
@@ -379,52 +339,25 @@ exports.startReservation = catchAsync(
           path: 'owner',
           select: '_id username email',
         },
-        { path: 'thingy', select: 'name' },
       ],
-      '+thingy +isOccupied',
+      '+isOccupied',
     );
 
     // Check if parking exists.
     if (!parking) {
-      if (sessionID) socket.emit('unsuccessful_reservation', {});
       return next(new AppError("The requested parking doesn't exists.", 404));
     }
 
     // Check if the connected user is the owner of the parking
     if (parking.owner._id.valueOf() === userId.valueOf()) {
-      if (sessionID) socket.emit('unsuccessful_reservation', {});
       return next(new AppError("You can't reserve your own parkings.", 400));
     }
 
     // Check if the parking is already occupied
     if (parking.isOccupied === true) {
-      if (sessionID) socket.emit('unsuccessful_reservation', {});
       next(new AppError('The requested parking is already occupied.', 400));
       return;
     }
-
-    // Wait that the user clicks on the associated thingy button
-    /*const client = mqtt.connect(process.env.MQTT_SERVER, {
-      username: process.env.MQTT_USR,
-      password: process.env.MQTT_PWD,
-    });*/
-
-    let {
-      thingy: { name: thingy },
-    } = parking;
-
-    thingy = thingy === 'blue-1' ? 'blue-3' : thingy;
-
-    const message = `Please confirm by pressing on the button of thingy ${thingy}.`;
-    if (sessionID) {
-      socket.emit('confirmation_message', {
-        message,
-      });
-    } else console.log(message);
-
-    const start = await waitClickButton(mqttClient, thingy);
-
-    if (sessionID) socket.emit('successful_reservation', {});
 
     // Create an occupation for the parking
     // N.B. : a transaction is needed such that updating the occupation state of a parking and create a new occupation in the database will be done atomically
@@ -468,7 +401,12 @@ exports.startReservation = catchAsync(
       };
 
       try {
-        await new Email(parking.owner).sendParkingReserved(username);
+        await new Email(parking.owner).sendParkingReserved(
+          username,
+          returnedOccupation._id,
+          parking.name,
+          returnedOccupation.start,
+        );
       } catch (err) {
         console.error(
           'Error while trying to send the parking reservation start to the owner.',
@@ -484,7 +422,6 @@ exports.startReservation = catchAsync(
       //await session.commitTransaction();
     } catch (err) {
       //await session.abortTransaction();
-      if (sessionID) socket.emit('unsuccessful_reservation', {});
       next(err);
     } finally {
       //await session.endSession();
@@ -505,15 +442,6 @@ exports.endReservation = catchAsync(
       params: { id },
     } = req;
 
-    const sessionID = req?.headers?.sessionid;
-    let socket;
-    if (sessionID) {
-      const socketObj = SOCKET_CONNECTIONS.find(
-        socket => socket.id === sessionID,
-      );
-      if (socketObj) socket = socketObj?.socket;
-    }
-
     const [occupation, parking] = await Promise.all([
       Occupation.findOne({
         client: userId.valueOf(),
@@ -531,42 +459,22 @@ exports.endReservation = catchAsync(
             path: 'owner',
             select: '_id username email',
           },
-          { path: 'thingy', select: 'name' },
         ],
-        '+thingy +isOccupied',
+        '+isOccupied',
       ),
     ]);
 
     // Check if the parking exists
     if (!parking) {
-      if (sessionID) socket.emit('unsuccessful_end', {});
       return next(new AppError("The requested parking doesn't exists.", 404));
     }
 
     // Check if the user has reserved the parking
     if (!occupation) {
-      if (sessionID) socket.emit('unsuccessful_end', {});
       next(new AppError("You haven't reserved this parking.", 400));
       return;
     }
 
-    let {
-      thingy: { name: thingy },
-    } = parking;
-
-    thingy = thingy === 'blue-1' ? 'blue-3' : thingy;
-
-    const message = `Please confirm by pressing on the button of thingy ${thingy}.`;
-
-    if (sessionID) {
-      socket.emit('confirmation_message', {
-        message,
-      });
-    } else console.log(message);
-
-    const end = await waitClickButton(mqttClient, thingy);
-
-    if (sessionID) socket.emit('successful_end', {});
     //const session = await mongoose.startSession();
     try {
       //await session.startTransaction();
@@ -622,7 +530,6 @@ exports.endReservation = catchAsync(
       //await session.commitTransaction();
     } catch (err) {
       //await session.abortTransaction();
-      if (sessionID) socket.emit('unsuccessful_end', {});
       next(err);
     } finally {
       //await session.endSession();

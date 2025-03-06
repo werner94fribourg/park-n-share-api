@@ -72,7 +72,7 @@ class Email {
    * @param {string} subject The subject of the email.
    * @private
    */
-  async send(template, subject) {
+  async send(template, subject, extraData = {}) {
     const { to, from, name, url } = this;
     // Render the HTML based on a pub template
     const html = await ejs.renderFile(
@@ -82,6 +82,7 @@ class Email {
         name,
         url,
         subject,
+        ...extraData, // Pass additional dynamic data
       },
     );
 
@@ -125,18 +126,26 @@ class Email {
   /**
    * Async function used to send a confirmation to a provider that his parking request was validated by an admin.
    */
-  async sendValidatedParking() {
-    await this.send('validatedParking', 'Your parking request was validated');
+  async sendValidatedParking(parkingSpot) {
+    await this.send('validatedParking', 'Your parking request was validated', {
+      parkingSpot,
+    });
   }
 
   /**
    * Async function used to send to the owner of a parking that an user has reserved his parking.
    * @param {string} username the username of the user that reserved the parking.
    */
-  async sendParkingReserved(username) {
+  async sendParkingReserved(
+    username,
+    reservationID,
+    parkingSpot,
+    reservationDateTime,
+  ) {
     await this.send(
       'parkingReserved',
       `${username} has reserved your parking.`,
+      { reservationID, parkingSpot, reservationDateTime },
     );
   }
 

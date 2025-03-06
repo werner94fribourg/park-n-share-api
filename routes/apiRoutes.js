@@ -6,7 +6,6 @@ const { Router } = require('express');
 
 const userRouter = require('./api/userRoutes');
 const parkingRouter = require('./api/parkingRoutes');
-const thingyRouter = require('./api/thingyRoutes');
 const occupationRouter = require('./api/occupationRoutes');
 
 /**
@@ -16,7 +15,6 @@ const occupationRouter = require('./api/occupationRoutes');
 const router = Router();
 
 router.use('/users', userRouter);
-router.use('/things', thingyRouter);
 
 router.use('/parkings', parkingRouter);
 

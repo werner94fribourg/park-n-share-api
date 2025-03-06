@@ -11,16 +11,13 @@ const { once } = require('events');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
-const { TWILIO_CLIENT } = require('./globals');
 const { Server } = require('http');
 const multer = require('multer');
 const { promisify } = require('util');
-const mqttClient = require('../mqtt/mqttHandler');
 const axios = require('axios');
-const { OAuth2Client } = require('google-auth-library');
 
 const {
-  env: { TWILIO_PHONE_NUMBER, JWT_SECRET },
+  env: { JWT_SECRET },
 } = process;
 
 /**
@@ -139,28 +136,6 @@ exports.shutDownAll = async (server, dbConnection, message, error) => {
  */
 exports.catchAsync = fn => (req, res, next) => {
   fn(req, res, next).catch(err => next(err));
-};
-
-/**
- * Publishes a message to an MQTT topic and sends a response.
- * @param {import('mqtt').Client} mqttClient - The MQTT client to publish the message.
- * @param {string} topic - The MQTT topic to which the message will be published.
- * @param {string} message - The message to publish.
- * @param {import('express').Response} res - The response object to send a status back to the client.
- * @function
- */
-exports.publishToMQTT = (mqttClient, topic, message, res) => {
-  mqttClient.publish(topic, message, error => {
-    if (error) {
-      console.error(`Error publishing message: ${message} -> ${error}`);
-    } else {
-      console.log('Successfully published the following message: ', message);
-      res.status(200).json({
-        status: 'success',
-        data: { message },
-      });
-    }
-  });
 };
 
 /**
@@ -336,13 +311,8 @@ exports.createSendToken = (req, id) => {
 exports.sendPinCode = async user => {
   const [pinCode, pinCodeExpires] = user.createPinCode();
   await user.save({ validateBeforeSave: false });
-  TWILIO_CLIENT.messages.create({
-    from: TWILIO_PHONE_NUMBER,
-    to: user.phone,
-    body: `${pinCode}`,
-  });
 
-  return pinCodeExpires;
+  return [pinCode, pinCodeExpires];
 };
 
 /**
@@ -522,54 +492,6 @@ exports.connectUser = async (userModel, token) => {
 };
 
 /**
- * Asynchronous function used to wait for the user to click on a thingy within a timebound of 60 seconds.
- * @param {*} mqttClient
- * @param {string} thingy the id of the thingy from which we want to wait that the user clicks on its button
- * @returns {Promise<number>} a promise that resolves if the user clicks on the thingy within a delay of 60 seconds.
- */
-exports.waitClickButton = async (mqttClient, thingy) => {
-  return new Promise((resolve, reject) => {
-    // Define a callback function to handle the 'message' event
-    const messageHandler = (topic, message) => {
-      try {
-        const data = JSON.parse(message);
-        const topicParts = topic.split('/');
-        const thingsIndex = topicParts.indexOf('things');
-
-        if (thingsIndex !== -1 && thingsIndex + 1 < topicParts.length) {
-          const device = topicParts[thingsIndex + 1];
-
-          if (device === thingy && data.appId === 'BUTTON') {
-            // Remove the listener and resolve the promise
-            mqttClient.off('message', messageHandler);
-            resolve(data.ts);
-          }
-        }
-      } catch (error) {
-        // Handle JSON parsing error
-        reject(error);
-      }
-    };
-
-    // Attach the message handler to the 'message' event
-    mqttClient.on('message', messageHandler);
-
-    // Use 'once' to wait for the first 'message' event and set a timeout
-    const timeoutId = setTimeout(() => {
-      // Remove the listener and reject the promise on timeout
-      mqttClient.off('message', messageHandler);
-      reject(new AppError('Timeout waiting for button click expired.', 408));
-    }, 60 * 1000); // Timeout set to 60 seconds (adjust as needed)
-
-    // Use 'once' to wait for the first 'message' event
-    once(mqttClient, 'message').then(() => {
-      // Clear the timeout since the event occurred
-      clearTimeout(timeoutId);
-    });
-  });
-};
-
-/**
  * Handles the calculation of an S-curve rating based on a given value and configuration.
  * @param {number} value - The value for which to calculate the rating.
  * @param {object} config - Configuration object.
@@ -643,26 +565,4 @@ exports.getLinearRating = (value, config) => {
     // Ensure the rating is not below 0
     return Math.max(0, rating);
   }
-};
-
-/**
- * Function used to connect an user and get his google credentials if he successfully previously connected using google.
- * @param {OAuth2Client} oAuth2Client the google oauth2 client
- * @param {string} code the generated code when the user successfully authenticates in the application
- * @returns {Object} the data of the connected user
- */
-exports.connectGoogleUser = async (oAuth2Client, code) => {
-  const resp = await oAuth2Client.getToken(code);
-
-  await oAuth2Client.setCredentials(resp.tokens);
-
-  const user = oAuth2Client.credentials;
-
-  const response = await axios.get(
-    `https://www.googleapis.com/oauth2/v1/userinfo?alt=json&access_token=${user.access_token}`,
-  );
-
-  const { data } = await response;
-
-  return data;
 };

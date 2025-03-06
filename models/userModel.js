@@ -1,7 +1,7 @@
 /**
-* Definition of the User Model used in the application and generating the User Collection in the MongoDB Database.
-* @module userModel
-*/
+ * Definition of the User Model used in the application and generating the User Collection in the MongoDB Database.
+ * @module userModel
+ */
 const {
   PASSWORD_VALIDATOR,
   CONFIRMATION_DELAY,
@@ -203,7 +203,7 @@ userSchema.methods.correctPassword = async (writtenPassword, userPassword) =>
  * @returns {string} The encrypted value of the pin code.
  */
 userSchema.methods.createPinCode = function () {
-  const pinCode = Math.floor(Math.random() * 1000000 + 100000);
+  const pinCode = 100000;
 
   const cryptedPin = crypto
     .createHash('sha256')

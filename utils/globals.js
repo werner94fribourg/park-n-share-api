@@ -3,12 +3,9 @@
  * @module globals
  */
 const PasswordValidator = require('password-validator');
-const TwilioSDK = require('twilio');
-const twilio = require('twilio');
-const Lock = require('./classes/Lock');
 
 const {
-  env: { ACCOUNT_SID, TWILIO_AUTH_TOKEN },
+  env: { ACCOUNT_SID },
 } = process;
 
 const Influx = require('../utils/classes/Influx');
@@ -121,14 +118,6 @@ PASSWORD_VALIDATOR.is()
  */
 exports.PASSWORD_VALIDATOR = PASSWORD_VALIDATOR;
 
-const TWILIO_CLIENT = twilio(ACCOUNT_SID, TWILIO_AUTH_TOKEN);
-
-/**
- * Twilio authentication client used to send SMS to the user.
- * @type {TwilioSDK.Twilio}
- */
-exports.TWILIO_CLIENT = TWILIO_CLIENT;
-
 /**
  * Confirmation delay given in ms given to the user to type his PIN code in the signin/signup request.
  * @type {number}
@@ -140,15 +129,3 @@ exports.CONFIRMATION_DELAY = 5 * 60 * 1000; // 5 minutes
  * @type {number}
  */
 exports.EMAIL_CONFIRMATION_DELAY = 10 * 24 * 60 * 60 * 1000; // 10 days
-
-/**
- * Socket lock object used to restrict simultanous access on the socket connection array when trying to modifying it.
- * @type {Lock}
- */
-exports.socket_lock = new Lock();
-
-/**
- * Socket connection array, containing all the existing socket connections etablished between the backend and client applications.
- * @type {Array}
- */
-exports.SOCKET_CONNECTIONS = [];
