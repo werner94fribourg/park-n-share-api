@@ -16,6 +16,7 @@ const {
   resetPassword,
   getPinExpiration,
   getGoogleClient,
+  validate,
 } = require('../../controllers/authController');
 const { Router } = require('express');
 const {
@@ -1136,5 +1137,61 @@ router
  *       - bearerAuth: []
  */
 router.route('/:id/role').patch(restrictTo('admin'), setRole);
+
+/**
+ * @swagger
+ * /users/validate:
+ *   get:
+ *     tags:
+ *       - Authentication
+ *     summary: Route used to validate the authentication token of the user and return the connected one
+ *     responses:
+ *       200:
+ *         description: The logged user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                           example: 642c38f3b7ed1dbd25858e9e
+ *                         email:
+ *                           type: string
+ *                           example: johndoe@example.com
+ *       401:
+ *         description: User login problems
+ *         content:
+ *           application/json:
+ *             examples:
+ *               notLoggedInExample:
+ *                 $ref: '#/components/examples/notLoggedInExample'
+ *               accountNotFoundExample:
+ *                 $ref: '#/components/examples/accountNotFoundExample'
+ *               passwordChangedExample:
+ *                 $ref: '#/components/examples/passwordChangedExample'
+ *               InvalidTokenExample:
+ *                 $ref: '#/components/examples/InvalidTokenExample'
+ *               tokenExpiredExample:
+ *                 $ref: '#/components/examples/tokenExpiredExample'
+ *       500:
+ *         description: Internal Server Error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ServerError'
+ *     security:
+ *       - bearerAuth: []
+ */
+router.route('/validate').get(protect, validate);
 
 module.exports = router;

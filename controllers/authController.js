@@ -234,6 +234,21 @@ exports.protect = catchAsync(
   },
 );
 
+exports.validate = catchAsync(
+  /**
+   * Function used to check if the user is logged in. It will continue to the next middleware function if it is the case, otherwise it will throw an error.
+   * @param {import('express').Request} req The request object of the Express framework, used to handle the request sent by the client.
+   * @param {import('express').NextFunction} next The next function of the Express framework, used to handle the next middleware function passed to the express pipeline.
+   */
+  async (req, res, next) => {
+    const {
+      user: { _id, email },
+    } = req;
+
+    res.status(200).json({ status: 'success', data: { _id, email } });
+  },
+);
+
 exports.restrictTo =
   /**
    * Function used to restrict the access to a route to users if they aren't from a specific one.
