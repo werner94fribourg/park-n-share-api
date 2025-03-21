@@ -25,7 +25,7 @@ const router = Router();
  *                 data:
  *                   type: object
  *                   properties:
- *                     parkings:
+ *                     occupations:
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/Occupation'

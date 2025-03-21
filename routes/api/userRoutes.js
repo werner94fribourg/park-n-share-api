@@ -145,7 +145,7 @@ const router = Router();
  *           type: string
  *           description: The login status of the user
  *           example: success
- *         username:
+ *         message:
  *           type: string
  *           description: The login success message
  *           example: Please confirm with the PIN code sent to your phone number.
