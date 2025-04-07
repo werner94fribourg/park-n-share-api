@@ -27,12 +27,15 @@ exports.signup = catchAsync(
       body: { username, email, phone, password, passwordConfirm },
     } = req;
 
+    const isConfirmed = true;
+
     const newUser = await User.create({
       username,
       email,
       phone,
       password,
       passwordConfirm,
+      isConfirmed,
     });
 
     let pins;
@@ -52,12 +55,29 @@ exports.signup = catchAsync(
 
     const [pinCode, pinCodeExpires] = pins;
 
-    res.status(201).json({
+    /*res.status(201).json({
       status: 'success',
       message: 'Please confirm with the PIN code sent to your phone number.',
       pinCode,
       pinCodeExpires,
-    });
+    });*/
+    const { resObject, cookieOptions } = createSendToken(req, newUser._id);
+
+    resObject.pinCode = pinCode;
+    resObject.pinCodeExpires = pinCodeExpires;
+    resObject['message'] = "Successful registration. Welcome to Park'N'Share!";
+
+    try {
+      if (!isConfirmed) await new Email(newUser).sendWelcome();
+    } catch (err) {
+      console.error('Error while trying to send the confirmation email.');
+      console.error(err);
+    }
+
+    // send the token as a httpOnly cookie
+    res.cookie('jwt', resObject.token, cookieOptions);
+
+    res.status(200).json(resObject);
   },
 );
 
@@ -195,12 +215,23 @@ exports.signin = catchAsync(
 
     const [pinCode, pinCodeExpires] = pins;
 
-    res.status(200).json({
+    /*res.status(200).json({
       status: 'success',
       message: 'Please confirm with the PIN code sent to your phone number.',
       pinCodeExpires,
       pinCode,
-    });
+    });*/
+
+    const { resObject, cookieOptions } = createSendToken(req, user._id);
+
+    resObject.pinCode = pinCode;
+    resObject.pinCodeExpires = pinCodeExpires;
+    resObject['message'] = 'Welcome back!';
+
+    // send the token as a httpOnly cookie
+    res.cookie('jwt', resObject.token, cookieOptions);
+
+    res.status(200).json(resObject);
   },
 );
 
