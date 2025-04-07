@@ -93,7 +93,7 @@ const router = Router();
  *       summary: The token has expired and the user needs to reconnect
  *       value:
  *         status: fail
- *         message: Your token has expired. Please log in again!
+ *         message: your session has expired. Please log in again!
  *     InternalServerExample:
  *       summary: Generic internal server error
  *       value:

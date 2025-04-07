@@ -70,7 +70,7 @@ exports.handleJWTError = () => new AppError('Invalid token!', 401);
  * @returns {AppError} An invalid JWT AppError object with a 401 status code.
  */
 exports.handleJWTExpiredError = () =>
-  new AppError('Your token has expired. Please log in again!', 401);
+  new AppError('your session has expired. Please log in again!', 401);
 
 /**
  * Function used to handle the respone object returned to the client when the server is in dev mode.

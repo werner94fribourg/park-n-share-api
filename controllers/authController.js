@@ -276,7 +276,7 @@ exports.validate = catchAsync(
       user: { _id, email },
     } = req;
 
-    res.status(200).json({ status: 'success', data: { _id, email } });
+    res.status(200).json({ status: 'success', data: { user: { _id, email } } });
   },
 );
 
