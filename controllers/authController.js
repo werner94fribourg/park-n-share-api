@@ -273,10 +273,15 @@ exports.validate = catchAsync(
    */
   async (req, res, next) => {
     const {
-      user: { _id, email },
+      user: { _id, email, role },
     } = req;
 
-    res.status(200).json({ status: 'success', data: { user: { _id, email } } });
+    res
+      .status(200)
+      .json({
+        status: 'success',
+        data: { user: { _id, email, roles: [role] } },
+      });
   },
 );
 

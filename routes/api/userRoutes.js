@@ -1168,6 +1168,11 @@ router.route('/:id/role').patch(restrictTo('admin'), setRole);
  *                         email:
  *                           type: string
  *                           example: johndoe@example.com
+ *                         roles:
+ *                           type: array
+ *                           items:
+ *                             type: string
+ *                           example: ["admin"]
  *       401:
  *         description: User login problems
  *         content:
