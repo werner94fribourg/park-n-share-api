@@ -48,8 +48,6 @@ const validatePassword = value => PASSWORD_VALIDATOR.validate(value);
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
-    required: [true, 'Please provide your username'],
-    unique: true,
     trim: true,
     lowercase: true,
     maxLength: [30, 'An username must have less or equal than 30 characters.'],
@@ -65,7 +63,6 @@ const userSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
-    required: [true, 'Please provide your phone number.'],
     unique: [true, 'The provided phone number is not available.'],
     validate: {
       validator: function (number) {

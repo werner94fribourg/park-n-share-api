@@ -29,14 +29,20 @@ exports.signup = catchAsync(
 
     const isConfirmed = true;
 
-    const newUser = await User.create({
+    const creationObj = {
       username,
       email,
       phone,
       password,
       passwordConfirm,
       isConfirmed,
-    });
+    };
+
+    if (!username) delete creationObj.username;
+
+    if (!phone) delete creationObj.phone;
+
+    const newUser = await User.create(creationObj);
 
     let pins;
 
@@ -276,12 +282,10 @@ exports.validate = catchAsync(
       user: { _id, email, role },
     } = req;
 
-    res
-      .status(200)
-      .json({
-        status: 'success',
-        data: { user: { _id, email, roles: [role] } },
-      });
+    res.status(200).json({
+      status: 'success',
+      data: { user: { _id, email, roles: [role] } },
+    });
   },
 );
 
