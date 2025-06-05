@@ -36,10 +36,21 @@ exports.queryByIdDB = error => {
  * @returns {AppError} A duplicate field AppError object with a 400 status code.
  */
 exports.handleDuplicateFieldsDB = error => {
-  const [value] = error.errmsg.match(/(["'])(?:(?=(\\?))\2.)*?\1/);
+  let field = 'unknown';
 
-  const message = `Duplicate field value: ${value}. Please use another value!`;
+  // Preferred method if keyValue is available
+  if (error.keyValue) {
+    field = Object.keys(error.keyValue)[0];
+  } else {
+    // Fallback to regex if keyValue not available
+    const match = error.message.match(/dup key: { (.+): (.+) }/);
+    if (match) {
+      field = match[1];
+      value = match[2];
+    }
+  }
 
+  const message = `Duplicate field value: ${field}. Please use another value!`;
   return new AppError(message, 400);
 };
 

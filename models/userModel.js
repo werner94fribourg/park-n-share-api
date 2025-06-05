@@ -50,8 +50,8 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true,
     lowercase: true,
-    maxLength: [30, 'An username must have less or equal than 30 characters.'],
-    minlength: [4, 'An username must have at least 4 characters.'],
+    /*maxLength: [30, 'An username must have less or equal than 30 characters.'],
+    minlength: [4, 'An username must have at least 4 characters.'],*/
   },
   email: {
     type: String,
@@ -63,13 +63,13 @@ const userSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
-    unique: [true, 'The provided phone number is not available.'],
+    /*unique: [true, 'The provided phone number is not available.'],
     validate: {
       validator: function (number) {
         return phone(number).isValid;
       },
       message: 'Please provide a valid phone number.',
-    },
+    },*/
   },
   photo: {
     type: String,
