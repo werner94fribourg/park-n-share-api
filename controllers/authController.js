@@ -72,6 +72,7 @@ exports.signup = catchAsync(
     resObject.pinCode = pinCode;
     resObject.pinCodeExpires = pinCodeExpires;
     resObject['message'] = "Successful registration. Welcome to Park'N'Share!";
+    resObject.roles = [newUser.role];
 
     try {
       if (!isConfirmed) await new Email(newUser).sendWelcome();
@@ -233,6 +234,7 @@ exports.signin = catchAsync(
     resObject.pinCode = pinCode;
     resObject.pinCodeExpires = pinCodeExpires;
     resObject['message'] = 'Welcome back!';
+    resObject.roles = [user.role];
 
     // send the token as a httpOnly cookie
     res.cookie('jwt', resObject.token, cookieOptions);

@@ -96,7 +96,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['client', 'provider', 'admin'],
     default: 'client',
-    select: false,
+    select: true,
   },
   passwordChangedAt: {
     type: Date,
