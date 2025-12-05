@@ -309,7 +309,6 @@ exports.createSendToken = (req, id) => {
     httpOnly: true,
     sameSite: 'none',
     secure: req.secure || req.header('x-forwarded-proto') === 'https',
-    domain: req.get('origin'),
   };
 
   return { resObject: { status: 'success', token }, cookieOptions };
